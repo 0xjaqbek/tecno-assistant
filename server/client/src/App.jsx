@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import './App.css'
+import './App.css';
 
-const TerminalChat = () => {
+const CyberpunkChat = () => {
   const [messages, setMessages] = useState([]);
   const [displayMessages, setDisplayMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -14,7 +14,7 @@ const TerminalChat = () => {
   // Add initial welcome message from aiQbek - for display only, not sent to API
   useEffect(() => {
     setDisplayMessages([{
-      text: "GM! I'm aiQbek0.1 First LLM (gemini2.0 Flash) delivered by jaqbek. Ready to dive into AI, Web3, smart contracts, or anything blockchain? WAGMI! 🚀",
+      text: "GM! I'm aiQbek2 First LLM (DeepSeek) delivered by jaqbek. Ready to dive into AI, Web3, smart contracts, or anything blockchain? WAGMI! 🚀",
       role: 'model',
       timestamp: new Date().toISOString()
     }]);
@@ -131,7 +131,7 @@ const TerminalChat = () => {
       }
       
       // Format error message based on type
-      let errorMessage = 'Connection failed. The blockchain must be congested! Try again later.';
+      let errorMessage = 'Connection failed. Neural link disrupted! Try again later.';
       
       if (err.message.includes('timed out')) {
         errorMessage = err.message;
@@ -156,80 +156,130 @@ const TerminalChat = () => {
     }
   };
 
-  // Enhanced terminal prompt character for crypto theme
-  const renderPrompt = (role) => {
-    return role === 'user' ? '>' : 'Ξ>';
+  // Format code blocks in messages
+  const formatText = (text) => {
+    if (!text) return '';
+    
+    // Replace code blocks with proper HTML
+    return text.split('```').map((segment, index) => {
+      if (index % 2 === 1) {
+        // This is a code block
+        const codeLines = segment.split('\n');
+        const language = codeLines[0].trim();
+        const code = codeLines.slice(1).join('\n');
+        
+        return (
+          <pre key={index}>
+            <code className={language ? `language-${language}` : ''}>{code}</code>
+          </pre>
+        );
+      } else {
+        // Handle inline code and regular text
+        return (
+          <div key={index}>
+            {segment.split('`').map((part, idx) => 
+              idx % 2 === 1 ? <code key={idx}>{part}</code> : 
+                <span key={idx}>{part}</span>
+            )}
+          </div>
+        );
+      }
+    });
   };
 
   return (
     <div className="app-container">
+      {/* 3D Grid Background */}
+      <div className="cyber-grid">
+        <div className="grid-floor"></div>
+      </div>
+      
+      {/* Header */}
       <header className="app-header">
-        <h1>aiQbek <span className="version">v0.1.0</span></h1>
-        <div className="header-links">
-          <a href="https://twitter.com/jaqbek_eth" target="_blank" rel="noopener noreferrer">@jaqbek_eth</a> | 
-          <a href="https://github.com/0xjaqbek" target="_blank" rel="noopener noreferrer">0xjaqbek</a> | 
-          <a href="https://t.me/jaqbek" target="_blank" rel="noopener noreferrer">telegram</a>
+        <div className="header-edge"></div>
+        <div className="header-edge-right"></div>
+        <h1 className="app-title">AIQBEK <span className="version">v2.0</span></h1>
+        <div className="nav-links">
+          <a href="https://twitter.com/jaqbek_eth" className="nav-link" target="_blank" rel="noopener noreferrer">@jaqbek_eth</a>
+          <a href="https://github.com/0xjaqbek" className="nav-link" target="_blank" rel="noopener noreferrer">0xjaqbek</a>
+          <a href="https://t.me/jaqbek" className="nav-link" target="_blank" rel="noopener noreferrer">telegram</a>
         </div>
       </header>
       
-      <div className="chat-container">
-        {error && <div className="error-message">{error}</div>}
-        
-        {displayMessages.map((message, index) => (
-          <div 
-            key={index} 
-            className={`message ${message.role === 'user' ? 'user-message' : 'bot-message'}`}
-          >
-            <div className="message-prompt">
-              <span className="terminal-prefix">{renderPrompt(message.role)}</span>
-              {message.role === 'user' ? 'You' : 'aiQbek'}:
-            </div>
-            <div className="message-text">{message.text}</div>
+      {/* Main Chat Window */}
+      <div className="chat-window">
+        <div className="chat-window-header">
+          <div className="window-buttons">
+            <button className="window-button"></button>
+            <button className="window-button"></button>
           </div>
-        ))}
+          <div className="window-title">DeepSeek Neural Connection</div>
+          <div className="window-actions">ONLINE</div>
+        </div>
         
-        {isLoading && (
-          <div className="message bot-message">
-            <div className="message-prompt">
-              <span className="terminal-prefix"></span> aiQbek:
+        <div className="chat-content">
+          {error && <div className="error-message">{error}</div>}
+          
+          {displayMessages.map((message, index) => (
+            <div 
+              key={index} 
+              className={`message ${message.role === 'user' ? 'user-message' : 'bot-message'}`}
+            >
+              <div className="message-prompt">
+                <span className="terminal-prefix">{message.role === 'user' ? '>>' : '=>'}</span>
+                {message.role === 'user' ? 'USER' : 'AI_QBEK'}
+              </div>
+              <div className="message-text">
+                {formatText(message.text)}
+              </div>
             </div>
-            <div className="message-text">
-              <div className="loading"></div> Mining response...
-              <button onClick={handleCancelRequest} className="cancel-button">Cancel</button>
+          ))}
+          
+          {isLoading && (
+            <div className="message bot-message">
+              <div className="message-prompt">
+                <span className="terminal-prefix"></span> AI_QBEK
+              </div>
+              <div className="message-text">
+                <div className="loading"></div> Processing neural request...
+                <button onClick={handleCancelRequest} className="cancel-button">CANCEL</button>
+              </div>
             </div>
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
       </div>
       
-      <form onSubmit={handleSubmit} className="input-container">
-        <span className="terminal-prefix"></span>
-        <input
-          type="text"
-          value={inputValue}
-          onChange={handleInputChange}
-          placeholder="Ask about Web3, DeFi, or dev..."
-          className="message-input"
-          ref={inputRef}
-          disabled={isLoading}
-        />
-        <button 
-          type="submit" 
-          className="send-button"
-          disabled={isLoading || !inputValue.trim()}
-        >
-          SEND
-        </button>
-      </form>
+      {/* Input Area */}
+      <div className="input-area">
+        <form onSubmit={handleSubmit} className="input-container">
+          <input
+            type="text"
+            value={inputValue}
+            onChange={handleInputChange}
+            placeholder="TYPE YOUR MESSAGE..."
+            className="message-input"
+            ref={inputRef}
+            disabled={isLoading}
+          />
+          <button 
+            type="submit" 
+            className="send-button"
+            disabled={isLoading || !inputValue.trim()}
+          >
+            →
+          </button>
+        </form>
+      </div>
       
-      <footer className="app-footer">
-        <div className="network-status">
-          <span className="network-indicator"></span> Connected
-        </div>
-      </footer>
+      {/* Status */}
+      <div className="status-indicator">
+        <span className="online-dot"></span>
+        <span>Connected to DeepSeek</span>
+      </div>
     </div>
   );
 };
 
-export default TerminalChat;
+export default CyberpunkChat;
