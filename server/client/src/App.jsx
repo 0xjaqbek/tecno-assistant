@@ -8,21 +8,43 @@ const GlassChatApp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
+  const chatContentRef = useRef(null); // Added ref for chat content
   const inputRef = useRef(null);
   const abortControllerRef = useRef(null);
 
   // Add initial welcome message from aiQbek - for display only, not sent to API
   useEffect(() => {
     setDisplayMessages([{
-      text: "GM! I'm aiQbek2 First LLM (DeepSeek) delivered by jaqbek. Ready to dive into AI, Web3, smart contracts, or anything blockchain? WAGMI! 🚀",
+      text: "GM! I'm aiQbek2 First LLM (from DeepSeek) delivered by jaqbek. Ready to dive into AI, Web3, smart contracts, or anything blockchain? WAGMI! 🚀",
       role: 'model',
       timestamp: new Date().toISOString()
     }]);
   }, []);
 
-  // Auto scroll to bottom of messages
+  // Improved scroll to bottom function
+  const scrollToBottom = () => {
+    // Direct scrollTop manipulation - most reliable method
+    if (chatContentRef.current) {
+      chatContentRef.current.scrollTop = chatContentRef.current.scrollHeight;
+    }
+    
+    // Also use scrollIntoView as a backup method
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Auto scroll to bottom of messages with improved handling
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Immediate scroll
+    scrollToBottom();
+    
+    // Delayed scroll to handle any rendering delays
+    const timeoutId = setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, [displayMessages]);
 
   // Focus input on load
@@ -122,6 +144,9 @@ const GlassChatApp = () => {
       // Add bot message to actual history for API
       setMessages(prev => [...prev, botMessage]);
       
+      // Extra scroll after response is received
+      setTimeout(() => scrollToBottom(), 100);
+      
     } catch (err) {
       console.error('Error sending message:', err);
       
@@ -210,7 +235,7 @@ const GlassChatApp = () => {
           <div className="window-actions">CONNECTED</div>
         </div>
         
-        <div className="chat-content">
+        <div className="chat-content" ref={chatContentRef}>
           {error && <div className="error-message">{error}</div>}
           
           {displayMessages.map((message, index) => (
@@ -240,7 +265,8 @@ const GlassChatApp = () => {
             </div>
           )}
           
-          <div ref={messagesEndRef} />
+          {/* This empty div is crucial for scrolling to work properly */}
+          <div ref={messagesEndRef} style={{ float: 'left', clear: 'both' }}></div>
         </div>
       </div>
       

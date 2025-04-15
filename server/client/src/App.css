@@ -31,6 +31,15 @@
   
   /* Fonts */
   --font-main: 'Rajdhani', 'Orbitron', sans-serif;
+  
+  /* Frozen glass effect colors */
+  --frost-light: rgba(210, 235, 255, 0.08);
+  --frost-medium: rgba(180, 210, 240, 0.12);
+  --frost-dark: rgba(100, 150, 200, 0.15);
+  --frost-highlight: rgba(255, 255, 255, 0.15);
+  --frost-shadow: rgba(30, 60, 100, 0.2);
+  --frost-border: rgba(160, 200, 255, 0.25);
+  --frost-glow: rgba(100, 180, 255, 0.25);
 }
 
 /* Base styling */
@@ -57,18 +66,24 @@ body {
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100vh; /* Ensure full height */
   max-width: 1200px;
   margin: 0 auto;
   padding: 15px;
   position: relative;
   z-index: 1;
+  box-sizing: border-box; /* Include padding in height calculation */
+  overflow: hidden; /* Prevent outer scrolling */
 }
 
-/* Header styling - glass effect */
+/* Header styling - frozen glass effect */
 .app-header {
-  background: var(--glass-bg-dark);
-  border: 1px solid var(--glass-border-light);
+  background: linear-gradient(135deg, 
+    var(--glass-bg-dark) 0%, 
+    rgba(22, 32, 46, 0.45) 40%,
+    rgba(16, 26, 40, 0.55) 60%,
+    var(--glass-bg-dark) 100%);
+  border: 1px solid var(--frost-border);
   border-radius: 10px;
   padding: 15px 20px;
   margin-bottom: 20px;
@@ -76,20 +91,43 @@ body {
   justify-content: space-between;
   align-items: center;
   backdrop-filter: blur(8px);
-  box-shadow: 0 4px 20px var(--glass-shadow);
+  box-shadow: 
+    0 4px 20px var(--glass-shadow),
+    inset 0 1px 8px var(--frost-highlight);
   position: relative;
   overflow: hidden;
 }
 
-/* Glass highlight effect on top */
+/* Enhanced frost effect on app header top edge */
 .app-header::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 1px;
-  background: var(--glass-highlight);
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    var(--frost-highlight) 30%, 
+    var(--frost-highlight) 70%, 
+    transparent 100%);
+}
+
+/* Add frost pattern overlay to app header */
+.app-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(135deg, transparent 0%, var(--frost-light) 50%, transparent 100%),
+    radial-gradient(circle at 20% 30%, var(--frost-medium) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, var(--frost-medium) 0%, transparent 50%);
+  opacity: 0.7;
+  z-index: -1;
+  pointer-events: none;
 }
 
 .app-title {
@@ -101,6 +139,7 @@ body {
   text-transform: uppercase;
   margin: 0;
   position: relative;
+  text-shadow: 0 0 15px var(--frost-glow);
 }
 
 .version {
@@ -157,8 +196,10 @@ body {
   border: 1px solid var(--glass-border-light);
   backdrop-filter: blur(10px);
   box-shadow: 0 8px 30px var(--glass-shadow);
-  display: flex;
-  flex-direction: column;
+  display: flex; /* Added for scrolling fix */
+  flex-direction: column; /* Added for scrolling fix */
+  height: 100%; /* Added for scrolling fix */
+  min-height: 0; /* Added for scrolling fix */
 }
 
 .chat-window::before {
@@ -171,14 +212,54 @@ body {
   background: var(--glass-highlight);
 }
 
+/* Chat window header with frozen effect */
 .chat-window-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 20px;
-  border-bottom: 1px solid var(--glass-border-dark);
-  background: var(--glass-bg-darker);
-  backdrop-filter: blur(5px);
+  border-bottom: 1px solid var(--frost-border);
+  background: linear-gradient(135deg, 
+    rgba(12, 20, 32, 0.75) 0%, 
+    rgba(16, 28, 44, 0.65) 50%,
+    rgba(12, 20, 32, 0.75) 100%);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 3px 10px var(--frost-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Frost effect on chat header top edge */
+.chat-window-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    var(--frost-highlight) 20%, 
+    var(--frost-highlight) 80%, 
+    transparent 100%);
+}
+
+/* Add frost crystal pattern to chat header */
+.chat-window-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 30% 30%, var(--frost-highlight) 0%, transparent 15%),
+    radial-gradient(circle at 70% 70%, var(--frost-highlight) 0%, transparent 15%),
+    radial-gradient(circle at 20% 80%, var(--frost-highlight) 0%, transparent 10%),
+    radial-gradient(circle at 80% 20%, var(--frost-highlight) 0%, transparent 10%);
+  opacity: 0.4;
+  z-index: -1;
+  pointer-events: none;
 }
 
 .window-buttons {
@@ -190,8 +271,10 @@ body {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: rgba(80, 100, 140, 0.3);
-  border: none;
+  background: radial-gradient(circle at center, 
+    var(--frost-light) 0%, 
+    rgba(80, 100, 140, 0.3) 70%);
+  border: 1px solid var(--frost-border);
 }
 
 .window-title {
@@ -200,22 +283,26 @@ body {
   font-weight: 500;
   text-align: center;
   flex: 1;
+  text-shadow: 0 0 8px var(--frost-glow);
+  letter-spacing: 1px;
 }
 
 .window-actions {
   padding: 4px 10px;
   border-radius: 4px;
-  background: rgba(20, 30, 50, 0.5);
+  background: rgba(20, 30, 50, 0.6);
   color: var(--accent-color);
   font-size: 0.75rem;
-  border: 1px solid rgba(51, 204, 204, 0.3);
+  border: 1px solid var(--frost-border);
+  box-shadow: 0 0 8px var(--frost-glow);
 }
 
 .chat-content {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: auto !important;
+  min-height: 0;
   padding: 20px;
-  display: flex;
+
   flex-direction: column;
   background: rgba(12, 18, 30, 0.3);
   backdrop-filter: blur(5px);
@@ -232,6 +319,7 @@ body {
   animation: fadeIn 0.3s ease-out;
   position: relative;
   overflow: hidden;
+  word-break: break-word; /* Added for scrolling fix */
 }
 
 @keyframes fadeIn {
@@ -474,9 +562,11 @@ pre {
   border-radius: 6px;
   padding: 12px;
   margin: 12px 0;
-  overflow-x: auto;
+  overflow-x: auto; /* Allow horizontal scrolling in code blocks */
   font-family: 'Courier New', monospace;
   backdrop-filter: blur(3px);
+  white-space: pre-wrap; /* Added for better code display */
+  max-width: 100%; /* Added for scrolling fix */
 }
 
 code {
