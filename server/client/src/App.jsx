@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
-const CyberpunkChat = () => {
+const GlassChatApp = () => {
   const [messages, setMessages] = useState([]);
   const [displayMessages, setDisplayMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -95,7 +95,7 @@ const CyberpunkChat = () => {
       });
       
       if (response.status === 504) {
-        throw new Error("The blockchain nodes are congested! The AI request timed out. Try a simpler query.");
+        throw new Error("The neural link timed out. Try a simpler query.");
       }
       
       if (!response.ok) {
@@ -131,7 +131,7 @@ const CyberpunkChat = () => {
       }
       
       // Format error message based on type
-      let errorMessage = 'Connection failed. Neural link disrupted! Try again later.';
+      let errorMessage = 'Connection failed. Neural link disrupted.';
       
       if (err.message.includes('timed out')) {
         errorMessage = err.message;
@@ -189,15 +189,8 @@ const CyberpunkChat = () => {
 
   return (
     <div className="app-container">
-      {/* 3D Grid Background */}
-      <div className="cyber-grid">
-        <div className="grid-floor"></div>
-      </div>
-      
       {/* Header */}
       <header className="app-header">
-        <div className="header-edge"></div>
-        <div className="header-edge-right"></div>
         <h1 className="app-title">AIQBEK <span className="version">v2.0</span></h1>
         <div className="nav-links">
           <a href="https://twitter.com/jaqbek_eth" className="nav-link" target="_blank" rel="noopener noreferrer">@jaqbek_eth</a>
@@ -213,8 +206,8 @@ const CyberpunkChat = () => {
             <button className="window-button"></button>
             <button className="window-button"></button>
           </div>
-          <div className="window-title">DeepSeek Neural Connection</div>
-          <div className="window-actions">ONLINE</div>
+          <div className="window-title">DeepSeek Neural Link</div>
+          <div className="window-actions">CONNECTED</div>
         </div>
         
         <div className="chat-content">
@@ -258,7 +251,7 @@ const CyberpunkChat = () => {
             type="text"
             value={inputValue}
             onChange={handleInputChange}
-            placeholder="TYPE YOUR MESSAGE..."
+            placeholder="Enter message..."
             className="message-input"
             ref={inputRef}
             disabled={isLoading}
@@ -276,10 +269,10 @@ const CyberpunkChat = () => {
       {/* Status */}
       <div className="status-indicator">
         <span className="online-dot"></span>
-        <span>Connected to DeepSeek</span>
+        <span>Neural link active</span>
       </div>
     </div>
   );
 };
 
-export default CyberpunkChat;
+export default GlassChatApp;
