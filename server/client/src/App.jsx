@@ -42,14 +42,17 @@ const GlassChatApp = () => {
   useEffect(() => {
     ambientAudioRef.current = new Audio('/ambience.mp3');
     ambientAudioRef.current.loop = true;
-    ambientAudioRef.current.volume = 0.7; // Zmniejszona głośność z 0.9
+    ambientAudioRef.current.volume = 0.7;
+    // Ustawiamy na true po inicjalizacji
     setAudioInitialized(true);
   }, []);
 
   // Dodatkowy useEffect do obsługi autostartu dźwięku
   useEffect(() => {
+    console.log("Status audio:", { audioInitialized, ambientPlaying });
     // Uruchamiaj dźwięk tylko po pełnej inicjalizacji obiektu Audio
     if (audioInitialized && ambientPlaying && ambientAudioRef.current) {
+      console.log("Próba odtworzenia dźwięku ambientowego");
       const playPromise = ambientAudioRef.current.play();
       
       if (playPromise !== undefined) {
@@ -65,6 +68,7 @@ const GlassChatApp = () => {
   useEffect(() => {
     const handleUserInteraction = () => {
       if (ambientPlaying && ambientAudioRef.current && ambientAudioRef.current.paused) {
+        console.log("Odtwarzanie dźwięku po interakcji użytkownika");
         ambientAudioRef.current.play().catch(err => 
           console.warn("Odtwarzanie dźwięku po interakcji zablokowane:", err)
         );
@@ -257,7 +261,6 @@ const GlassChatApp = () => {
           <span className="footer-text">🪐 Moonstone RPG</span>
           <div className="footer-links">
             <a href="https://twitter.com/jaqbek_eth" target="_blank" rel="noopener noreferrer">@jaqbek_eth</a>
-            <a href="https://github.com/0xjaqbek" target="_blank" rel="noopener noreferrer">GitHub</a>
             <a href="https://t.me/jaqbek" target="_blank" rel="noopener noreferrer">Telegram</a>
           </div>
         </div>
