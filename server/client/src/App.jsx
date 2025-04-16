@@ -227,12 +227,7 @@ const GlassChatApp = () => {
       {/* Main Chat Window */}
       <div className="chat-window">
         <div className="chat-window-header">
-          <div className="window-buttons">
-            <button className="window-button"></button>
-            <button className="window-button"></button>
-          </div>
-          <div className="window-title">DeepSeek Neural Link</div>
-          <div className="window-actions">CONNECTED</div>
+          <div className="window-title">DeepSeek ChatBot by jaqbek</div>
         </div>
         
         <div className="chat-content" ref={chatContentRef}>
@@ -295,7 +290,7 @@ const GlassChatApp = () => {
       {/* Status */}
       <div className="status-indicator">
         <span className="online-dot"></span>
-        <span>Neural link active</span>
+        <span>Active</span>
       </div>
     </div>
   );

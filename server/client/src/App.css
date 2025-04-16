@@ -1,4 +1,4 @@
-/* Enhanced Glass Effect Styling with Depth */
+/* Enhanced Glass Effect Styling with 3D Depth */
 
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
@@ -40,6 +40,14 @@
   --frost-shadow: rgba(30, 60, 100, 0.2);
   --frost-border: rgba(160, 200, 255, 0.25);
   --frost-glow: rgba(100, 180, 255, 0.25);
+  
+  /* 3D depth effect variables */
+  --depth-shadow-1: 0 2px 5px rgba(0, 0, 0, 0.2);
+  --depth-shadow-2: 0 5px 15px rgba(0, 0, 0, 0.3);
+  --depth-shadow-3: 0 10px 25px rgba(0, 0, 0, 0.4);
+  --depth-shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  --depth-highlight-top: rgba(255, 255, 255, 0.1);
+  --depth-highlight-bottom: rgba(255, 255, 255, 0.05);
 }
 
 /* Base styling */
@@ -60,6 +68,8 @@ body {
   padding: 0;
   min-height: 100vh;
   overflow-x: hidden;
+  /* Add subtle perspective to the entire page */
+  perspective: 1000px;
 }
 
 /* App container */
@@ -74,28 +84,44 @@ body {
   z-index: 1;
   box-sizing: border-box; /* Include padding in height calculation */
   overflow: hidden; /* Prevent outer scrolling */
+  /* Add subtle 3D transform to the entire container */
+  transform-style: preserve-3d;
+  transform: translateZ(0);
 }
 
-/* Header styling - frozen glass effect */
+/* Header styling - frozen glass effect with 3D depth */
 .app-header {
   background: linear-gradient(135deg, 
-    var(--glass-bg-dark) 0%, 
-    rgba(22, 32, 46, 0.45) 40%,
-    rgba(16, 26, 40, 0.55) 60%,
-    var(--glass-bg-dark) 100%);
-  border: 1px solid var(--frost-border);
+    rgba(0, 0, 0, 0.85) 0%, 
+    rgba(5, 10, 15, 0.75) 40%,
+    rgba(8, 12, 18, 0.8) 60%,
+    rgba(0, 0, 0, 0.85) 100%);
+  border: 1px solid rgba(60, 75, 90, 0.3);
   border-radius: 10px;
   padding: 15px 20px;
   margin-bottom: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
   box-shadow: 
-    0 4px 20px var(--glass-shadow),
-    inset 0 1px 8px var(--frost-highlight);
+    0 10px 20px rgba(0, 0, 0, 0.7),
+    inset 0 1px 8px rgba(100, 130, 160, 0.15),
+    0 0 20px rgba(20, 40, 60, 0.3);
   position: relative;
   overflow: hidden;
+  /* 3D transform effects */
+  transform-style: preserve-3d;
+  transform: perspective(1000px) translateZ(5px);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.app-header:hover {
+  transform: perspective(1000px) translateZ(12px);
+  box-shadow: 
+    0 15px 30px rgba(0, 0, 0, 0.8),
+    inset 0 1px 12px rgba(100, 130, 160, 0.25),
+    0 0 30px rgba(30, 50, 70, 0.4);
 }
 
 /* Enhanced frost effect on app header top edge */
@@ -108,9 +134,11 @@ body {
   height: 2px;
   background: linear-gradient(90deg, 
     transparent 0%, 
-    var(--frost-highlight) 30%, 
-    var(--frost-highlight) 70%, 
+    rgba(100, 130, 160, 0.3) 30%, 
+    rgba(100, 130, 160, 0.3) 70%, 
     transparent 100%);
+  /* 3D effect for top highlight */
+  transform: translateZ(2px);
 }
 
 /* Add frost pattern overlay to app header */
@@ -122,12 +150,25 @@ body {
   right: 0;
   bottom: 0;
   background-image: 
-    linear-gradient(135deg, transparent 0%, var(--frost-light) 50%, transparent 100%),
-    radial-gradient(circle at 20% 30%, var(--frost-medium) 0%, transparent 50%),
-    radial-gradient(circle at 80% 70%, var(--frost-medium) 0%, transparent 50%);
+    linear-gradient(135deg, transparent 0%, rgba(30, 50, 70, 0.08) 50%, transparent 100%),
+    radial-gradient(circle at 20% 30%, rgba(60, 90, 120, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(60, 90, 120, 0.05) 0%, transparent 50%);
   opacity: 0.7;
   z-index: -1;
   pointer-events: none;
+  /* 3D effect for pattern */
+  transform: translateZ(1px);
+}
+
+/* Optional: Add subtle ice crystal animation */
+@keyframes iceShimmer {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.6; }
+}
+
+.app-header::after {
+  animation: iceShimmer 6s infinite ease-in-out;
 }
 
 .app-title {
@@ -139,7 +180,16 @@ body {
   text-transform: uppercase;
   margin: 0;
   position: relative;
-  text-shadow: 0 0 15px var(--frost-glow);
+  text-shadow: 
+    0 0 15px var(--frost-glow),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+  /* 3D effect for title */
+  transform: translateZ(10px);
+  transition: transform 0.3s ease;
+}
+
+.app-header:hover .app-title {
+  transform: translateZ(15px);
 }
 
 .version {
@@ -147,11 +197,15 @@ body {
   color: var(--accent-color);
   opacity: 0.8;
   font-weight: 400;
+  /* 3D effect for version */
+  transform: translateZ(8px);
 }
 
 .nav-links {
   display: flex;
   gap: 15px;
+  /* 3D effect for links container */
+  transform: translateZ(7px);
 }
 
 .nav-link {
@@ -166,6 +220,9 @@ body {
   backdrop-filter: blur(5px);
   position: relative;
   overflow: hidden;
+  /* 3D effects for nav links */
+  box-shadow: var(--depth-shadow-1);
+  transform: translateZ(0);
 }
 
 .nav-link::before {
@@ -176,30 +233,72 @@ body {
   right: 0;
   height: 1px;
   background: var(--glass-highlight);
+  /* 3D effect for highlight */
+  transform: translateZ(1px);
 }
 
 .nav-link:hover {
   background: var(--glass-bg-light);
   border-color: var(--accent-color);
-  box-shadow: 0 0 15px var(--accent-glow);
-  transform: translateY(-1px);
+  box-shadow: 
+    0 0 15px var(--accent-glow),
+    var(--depth-shadow-2);
+  transform: translateY(-2px) translateZ(5px);
 }
 
-/* Main chat window - enhanced glass */
+/* Main chat window - enhanced glass with 3D depth */
 .chat-window {
   flex: 1;
   margin-bottom: 20px;
   overflow: hidden;
   border-radius: 10px;
   position: relative;
-  background: var(--glass-bg-dark);
-  border: 1px solid var(--glass-border-light);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 8px 30px var(--glass-shadow);
+  background: rgba(5, 8, 12, 0.75);
+  border: 1px solid rgba(60, 75, 90, 0.3);
+  backdrop-filter: blur(15px);
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(0, 10, 20, 0.4),
+    inset 0 1px 3px rgba(100, 130, 160, 0.1);
   display: flex; /* Added for scrolling fix */
   flex-direction: column; /* Added for scrolling fix */
   height: 100%; /* Added for scrolling fix */
   min-height: 0; /* Added for scrolling fix */
+  
+  /* Enhanced 3D transform effects */
+  transform-style: preserve-3d;
+  transform: perspective(1200px) translateZ(0) rotateX(2deg);
+  transition: transform 0.5s ease, box-shadow 0.5s ease;
+  
+  /* Create depth with pseudo element for "floor shadow" */
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 20px;
+    left: 10%;
+    right: 10%;
+    height: 20px;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: -1;
+    filter: blur(5px);
+    transform: translateZ(-10px);
+    opacity: 0.6;
+  }
+}
+
+.chat-window:hover {
+  transform: perspective(1200px) translateZ(10px) rotateX(1deg);
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.7),
+    0 0 50px rgba(0, 15, 30, 0.5),
+    inset 0 1px 5px rgba(100, 130, 160, 0.15);
+    
+  &::after {
+    opacity: 0.8;
+    bottom: -25px;
+    filter: blur(8px);
+  }
 }
 
 .chat-window::before {
@@ -209,24 +308,62 @@ body {
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--glass-highlight);
+  background: linear-gradient(90deg, 
+    transparent 0%,
+    rgba(100, 130, 160, 0.3) 20%,
+    rgba(100, 130, 160, 0.3) 80%,
+    transparent 100%);
+  /* 3D effect for top highlight */
+  transform: translateZ(1px);
 }
 
-/* Chat window header with frozen effect */
+/* Add frost pattern to enhance depth */
+.chat-window-frost-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(135deg, transparent 0%, rgba(30, 50, 70, 0.05) 50%, transparent 100%),
+    radial-gradient(circle at 20% 20%, rgba(80, 110, 140, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(80, 110, 140, 0.03) 0%, transparent 40%);
+  opacity: 0.6;
+  z-index: 1;
+  transform: translateZ(2px);
+}
+
+/* Chat window header with frozen effect and 3D depth */
 .chat-window-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--frost-border);
+  padding: 20px 20px ;
+  border-bottom: 1px solid rgba(60, 75, 90, 0.3);
   background: linear-gradient(135deg, 
-    rgba(12, 20, 32, 0.75) 0%, 
-    rgba(16, 28, 44, 0.65) 50%,
-    rgba(12, 20, 32, 0.75) 100%);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 3px 10px var(--frost-shadow);
+    rgba(0, 0, 0, 0.85) 0%, 
+    rgba(5, 10, 15, 0.75) 50%,
+    rgba(0, 0, 0, 0.85) 100%);
+  backdrop-filter: blur(12px);
+  box-shadow: 
+    0 3px 10px rgba(0, 0, 0, 0.6),
+    0 5px 15px rgba(0, 0, 0, 0.4);
   position: relative;
   overflow: hidden;
+  /* 3D effects */
+  transform-style: preserve-3d;
+  transform: perspective(1000px) translateZ(5px);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  z-index: 2;
+}
+
+/* Hover effect to emerge from darkness */
+.chat-window-header:hover {
+  transform: perspective(1000px) translateZ(8px);
+  box-shadow: 
+    0 5px 12px rgba(0, 0, 0, 0.7),
+    0 8px 20px rgba(0, 0, 0, 0.5);
 }
 
 /* Frost effect on chat header top edge */
@@ -239,9 +376,11 @@ body {
   height: 1px;
   background: linear-gradient(90deg, 
     transparent 0%, 
-    var(--frost-highlight) 20%, 
-    var(--frost-highlight) 80%, 
+    rgba(100, 130, 160, 0.25) 20%, 
+    rgba(100, 130, 160, 0.25) 80%, 
     transparent 100%);
+  /* 3D effect */
+  transform: translateZ(1px);
 }
 
 /* Add frost crystal pattern to chat header */
@@ -253,18 +392,29 @@ body {
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(circle at 30% 30%, var(--frost-highlight) 0%, transparent 15%),
-    radial-gradient(circle at 70% 70%, var(--frost-highlight) 0%, transparent 15%),
-    radial-gradient(circle at 20% 80%, var(--frost-highlight) 0%, transparent 10%),
-    radial-gradient(circle at 80% 20%, var(--frost-highlight) 0%, transparent 10%);
-  opacity: 0.4;
+    radial-gradient(circle at 30% 30%, rgba(80, 110, 140, 0.08) 0%, transparent 15%),
+    radial-gradient(circle at 70% 70%, rgba(80, 110, 140, 0.08) 0%, transparent 15%),
+    radial-gradient(circle at 20% 80%, rgba(80, 110, 140, 0.06) 0%, transparent 10%),
+    radial-gradient(circle at 80% 20%, rgba(80, 110, 140, 0.06) 0%, transparent 10%);
+  opacity: 0.3;
   z-index: -1;
   pointer-events: none;
+  /* Add subtle shimmer animation */
+  animation: frostShimmer 8s infinite ease-in-out;
+}
+
+/* Add subtle shimmer animation */
+@keyframes frostShimmer {
+  0% { opacity: 0.2; }
+  50% { opacity: 0.4; }
+  100% { opacity: 0.2; }
 }
 
 .window-buttons {
   display: flex;
   gap: 8px;
+  /* 3D effect */
+  transform: translateZ(2px);
 }
 
 .window-button {
@@ -275,6 +425,13 @@ body {
     var(--frost-light) 0%, 
     rgba(80, 100, 140, 0.3) 70%);
   border: 1px solid var(--frost-border);
+  /* 3D effect */
+  box-shadow: var(--depth-shadow-1);
+  transition: transform 0.2s ease;
+}
+
+.window-button:hover {
+  transform: translateZ(3px);
 }
 
 .window-title {
@@ -283,8 +440,12 @@ body {
   font-weight: 500;
   text-align: center;
   flex: 1;
-  text-shadow: 0 0 8px var(--frost-glow);
+  text-shadow: 
+    0 0 8px var(--frost-glow),
+    0 1px 2px rgba(0, 0, 0, 0.2);
   letter-spacing: 1px;
+  /* 3D effect */
+  transform: translateZ(3px);
 }
 
 .window-actions {
@@ -294,7 +455,19 @@ body {
   color: var(--accent-color);
   font-size: 0.75rem;
   border: 1px solid var(--frost-border);
-  box-shadow: 0 0 8px var(--frost-glow);
+  box-shadow: 
+    0 0 8px var(--frost-glow),
+    var(--depth-shadow-1);
+  /* 3D effect */
+  transform: translateZ(2px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.window-actions:hover {
+  transform: translateZ(4px);
+  box-shadow: 
+    0 0 12px var(--frost-glow),
+    var(--depth-shadow-2);
 }
 
 .chat-content {
@@ -306,20 +479,33 @@ body {
   flex-direction: column;
   background: rgba(12, 18, 30, 0.3);
   backdrop-filter: blur(5px);
+  /* Prevent 3D effects in the scrollable area to avoid performance issues */
+  transform: translateZ(0);
 }
 
-/* Message styling - enhanced glass */
+/* Message styling - enhanced glass with 3D depth */
 .message {
   margin-bottom: 16px;
   max-width: 90%;
   border-radius: 8px;
   padding: 12px 16px;
   backdrop-filter: blur(5px);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 
+    var(--depth-shadow-1),
+    0 2px 10px rgba(0, 0, 0, 0.2);
   animation: fadeIn 0.3s ease-out;
   position: relative;
   overflow: hidden;
   word-break: break-word; /* Added for scrolling fix */
+  /* 3D effects */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.message:hover {
+  box-shadow: 
+    var(--depth-shadow-2),
+    0 3px 15px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px) scale(1.01);
 }
 
 @keyframes fadeIn {
@@ -332,6 +518,8 @@ body {
   background: var(--user-msg-bg);
   border: 1px solid var(--glass-border-dark);
   border-radius: 8px 2px 8px 8px;
+  /* 3D effect specific to user messages */
+  transform-origin: right center;
 }
 
 .user-message::before {
@@ -342,6 +530,8 @@ body {
   width: 30%;
   height: 1px;
   background: linear-gradient(to left, var(--glass-highlight), transparent);
+  /* 3D effect */
+  transform: translateZ(1px);
 }
 
 .bot-message {
@@ -349,6 +539,8 @@ body {
   background: var(--bot-msg-bg);
   border: 1px solid var(--glass-border-dark);
   border-radius: 2px 8px 8px 8px;
+  /* 3D effect specific to bot messages */
+  transform-origin: left center;
 }
 
 .bot-message::before {
@@ -359,6 +551,8 @@ body {
   width: 30%;
   height: 1px;
   background: linear-gradient(to right, var(--glass-highlight), transparent);
+  /* 3D effect */
+  transform: translateZ(1px);
 }
 
 .message-prompt {
@@ -366,6 +560,8 @@ body {
   margin-bottom: 8px;
   display: flex;
   align-items: center;
+  /* 3D effect */
+  transform: translateZ(2px);
 }
 
 .terminal-prefix {
@@ -373,6 +569,7 @@ body {
   margin-right: 8px;
   font-weight: bold;
   font-family: 'Orbitron', monospace;
+  text-shadow: 0 0 5px var(--accent-glow);
 }
 
 .user-message .message-prompt {
@@ -386,18 +583,62 @@ body {
 .message-text {
   color: var(--text-primary);
   line-height: 1.6;
+  /* 3D effect */
+  transform: translateZ(1px);
 }
 
-/* Input area - enhanced glass */
+/* Input area - enhanced glass with 3D depth */
 .input-area {
   position: relative;
   margin-bottom: 5px;
-  background: var(--glass-bg-dark);
-  border: 1px solid var(--glass-border-light);
+  background: linear-gradient(135deg, 
+    rgba(5, 8, 12, 0.8) 0%, 
+    rgba(10, 15, 22, 0.75) 50%,
+    rgba(5, 8, 12, 0.8) 100%);
+  border: 1px solid rgba(60, 75, 90, 0.3);
   border-radius: 8px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 15px var(--glass-shadow);
+  backdrop-filter: blur(15px);
+  box-shadow: 
+    0 8px 20px rgba(0, 0, 0, 0.5),
+    0 4px 15px rgba(0, 10, 20, 0.3),
+    inset 0 1px 2px rgba(100, 130, 160, 0.1);
   overflow: hidden;
+  /* Enhanced 3D effects */
+  transform-style: preserve-3d;
+  transform: perspective(1000px) translateZ(5px) rotateX(1deg);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  
+  /* Create depth with pseudo element for "floor shadow" */
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 15%;
+    right: 15%;
+    height: 8px;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: -1;
+    filter: blur(3px);
+    transform: translateZ(-5px);
+    opacity: 0.5;
+    transition: all 0.4s ease;
+  }
+}
+
+.input-area:focus-within {
+  transform: perspective(1000px) translateZ(12px) rotateX(0deg);
+  box-shadow: 
+    0 12px 25px rgba(0, 0, 0, 0.6),
+    0 6px 20px rgba(0, 10, 20, 0.4),
+    0 0 20px rgba(30, 50, 70, 0.3),
+    inset 0 1px 3px rgba(100, 130, 160, 0.2);
+    
+  &::after {
+    opacity: 0.7;
+    bottom: -15px;
+    filter: blur(4px);
+  }
 }
 
 .input-area::before {
@@ -407,13 +648,63 @@ body {
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--glass-highlight);
+  background: linear-gradient(90deg, 
+    transparent 0%,
+    rgba(100, 130, 160, 0.3) 20%,
+    rgba(100, 130, 160, 0.3) 80%,
+    transparent 100%);
+  /* 3D effect */
+  transform: translateZ(1px);
+}
+
+/* Add frost pattern to enhance glassy effect */
+.input-area-frost {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(135deg, transparent 0%, rgba(30, 50, 70, 0.05) 50%, transparent 100%),
+    radial-gradient(circle at 30% 30%, rgba(80, 110, 140, 0.04) 0%, transparent 30%),
+    radial-gradient(circle at 70% 70%, rgba(80, 110, 140, 0.04) 0%, transparent 30%);
+  opacity: 0;
+  z-index: 1;
+  transform: translateZ(2px);
+  transition: opacity 0.4s ease;
+}
+
+.input-area:focus-within .input-area-frost {
+  opacity: 0.6;
+  animation: frostReveal 0.6s ease-out;
 }
 
 .input-container {
   display: flex;
   align-items: center;
   padding: 8px 12px;
+  /* 3D effect */
+  transform-style: preserve-3d;
+  position: relative;
+  z-index: 2;
+}
+
+/* Animation for frost pattern to emerge when focused */
+@keyframes frostReveal {
+  0% { opacity: 0; }
+  100% { opacity: 0.6; }
+}
+
+/* Add subtle glow around the input when focused */
+.input-area:focus-within::before {
+  animation: glowPulse 2s infinite ease-in-out;
+}
+
+@keyframes glowPulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.5; }
 }
 
 .message-input {
@@ -425,6 +716,8 @@ body {
   color: var(--text-primary);
   font-family: var(--font-main);
   font-size: 1rem;
+  /* 3D effect */
+  transform: translateZ(2px);
 }
 
 .message-input::placeholder {
@@ -447,6 +740,11 @@ body {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  /* 3D effects */
+  box-shadow: 
+    var(--depth-shadow-1),
+    0 0 8px var(--accent-glow);
+  transform: translateZ(3px);
 }
 
 .send-button::before {
@@ -457,22 +755,26 @@ body {
   right: 0;
   height: 1px;
   background: var(--glass-highlight);
+  /* 3D effect */
+  transform: translateZ(1px);
 }
 
 .send-button:hover {
   background: rgba(20, 40, 60, 0.8);
-  box-shadow: 0 0 15px var(--accent-glow);
-  transform: translateY(-1px);
+  box-shadow: 
+    var(--depth-shadow-2),
+    0 0 15px var(--accent-glow);
+  transform: translateY(-1px) translateZ(5px);
 }
 
 .send-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   box-shadow: none;
-  transform: none;
+  transform: translateZ(3px);
 }
 
-/* Status indicator - glass style */
+/* Status indicator - glass style with 3D depth */
 .status-indicator {
   display: flex;
   justify-content: flex-end;
@@ -480,6 +782,9 @@ body {
   font-size: 0.85rem;
   color: var(--text-secondary);
   padding: 5px;
+  /* 3D effect */
+  transform: translateZ(2px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .online-dot {
@@ -488,16 +793,20 @@ body {
   border-radius: 50%;
   background-color: var(--accent-color);
   margin-right: 8px;
-  box-shadow: 0 0 8px var(--accent-glow);
+  box-shadow: 
+    0 0 8px var(--accent-glow),
+    0 0 12px var(--accent-glow);
   animation: pulse 2s infinite;
+  /* 3D effect */
+  transform: translateZ(1px);
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 1; }
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
 }
 
-/* Loading animation */
+/* Loading animation with 3D depth */
 .loading {
   display: inline-block;
   width: 16px;
@@ -507,13 +816,15 @@ body {
   border-top-color: var(--accent-color);
   animation: spin 1s linear infinite;
   margin-right: 10px;
+  /* 3D effect */
+  box-shadow: 0 0 8px var(--accent-glow);
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* Error message - enhanced glass */
+/* Error message - enhanced glass with 3D depth */
 .error-message {
   background: var(--error-bg);
   border: 1px solid var(--error-border);
@@ -524,6 +835,11 @@ body {
   backdrop-filter: blur(5px);
   position: relative;
   overflow: hidden;
+  /* 3D effects */
+  box-shadow: 
+    var(--depth-shadow-2),
+    0 0 15px rgba(255, 70, 70, 0.2);
+  transform: translateZ(2px);
 }
 
 .error-message::before {
@@ -534,9 +850,11 @@ body {
   width: 30%;
   height: 1px;
   background: linear-gradient(to right, rgba(255, 100, 100, 0.5), transparent);
+  /* 3D effect */
+  transform: translateZ(1px);
 }
 
-/* Cancel button - glass style */
+/* Cancel button - glass style with 3D depth */
 .cancel-button {
   background: rgba(80, 0, 0, 0.2);
   color: var(--error-text);
@@ -548,14 +866,20 @@ body {
   margin-left: 12px;
   transition: all 0.2s ease;
   backdrop-filter: blur(3px);
+  /* 3D effects */
+  box-shadow: var(--depth-shadow-1);
+  transform: translateZ(1px);
 }
 
 .cancel-button:hover {
   background: rgba(80, 0, 0, 0.3);
-  box-shadow: 0 0 8px rgba(255, 70, 70, 0.3);
+  box-shadow: 
+    var(--depth-shadow-2),
+    0 0 8px rgba(255, 70, 70, 0.3);
+  transform: translateY(-1px) translateZ(3px);
 }
 
-/* Code blocks - glass style */
+/* Code blocks - glass style with 3D depth */
 pre {
   background: rgba(10, 15, 25, 0.6);
   border: 1px solid var(--glass-border-dark);
@@ -567,6 +891,19 @@ pre {
   backdrop-filter: blur(3px);
   white-space: pre-wrap; /* Added for better code display */
   max-width: 100%; /* Added for scrolling fix */
+  /* 3D effects */
+  box-shadow: 
+    var(--depth-shadow-1),
+    inset 0 1px 3px rgba(0, 0, 0, 0.3);
+  transform: translateZ(1px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+pre:hover {
+  box-shadow: 
+    var(--depth-shadow-2),
+    inset 0 1px 5px rgba(0, 0, 0, 0.4);
+  transform: translateZ(2px);
 }
 
 code {
@@ -576,6 +913,9 @@ code {
   border-radius: 3px;
   color: var(--accent-color);
   font-size: 0.9em;
+  /* 3D effect */
+  box-shadow: var(--depth-shadow-1);
+  text-shadow: 0 0 5px var(--accent-glow);
 }
 
 /* Scrollbar styling */
@@ -585,11 +925,18 @@ code {
 
 ::-webkit-scrollbar-track {
   background: rgba(10, 15, 25, 0.3);
+  border-radius: 3px;
+  /* 3D effect */
+  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.2);
 }
 
 ::-webkit-scrollbar-thumb {
   background: rgba(60, 100, 150, 0.3);
   border-radius: 3px;
+  /* 3D effect */
+  box-shadow: 
+    inset 0 0 2px rgba(255, 255, 255, 0.1),
+    inset 0 0 3px rgba(0, 0, 0, 0.2);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -609,5 +956,14 @@ code {
   
   .app-title {
     font-size: 2rem;
+  }
+  
+  /* Reduce 3D effects on mobile for better performance */
+  .app-header, .chat-window, .input-area {
+    transform: translateZ(0);
+  }
+  
+  .message:hover {
+    transform: none;
   }
 }
