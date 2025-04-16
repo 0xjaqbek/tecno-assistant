@@ -7,22 +7,40 @@ const GlassChatApp = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [ambientPlaying, setAmbientPlaying] = useState(false);
+
   const messagesEndRef = useRef(null);
   const chatContentRef = useRef(null);
   const inputRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const ambientAudioRef = useRef(null);
 
-  // Initial intro for your Moonstone RPG world
+  const transmissionSounds = [
+    '/signal1.mp3',
+    '/signal2.mp3',
+    '/signal3.mp3'
+  ];
+
   useEffect(() => {
+    const openingScenes = [
+      "🌌 You awaken aboard the starship Arcon. The engines are silent. A blinking red light pulses from the console.",
+      "🛰️ Drift. Darkness. The only sound is the hum of recycled oxygen. The navigation system shows: 'Unknown Sector'.",
+      "⚠️ Hades Station broadcast detected: 'Docking authorization expired. Hostiles inbound. Prepare.'",
+      "🚀 Fuel levels critical. Deep void surrounds you. Something is approaching on the radar.",
+      "💀 Your memory is fragmented. Your mission is unclear. But one word remains: Moonstone."
+    ];
+    const randomIntro = openingScenes[Math.floor(Math.random() * openingScenes.length)];
     setDisplayMessages([{
-      text: `🚀 Welcome to the Moonstone Universe. 
-I am your AI Game Master. 
-You are about to enter a dark sci-fi roleplaying session where your choices shape the story. 
-No stats, no dice — just survival, discovery, and danger in the galaxy's deadliest corners.
-\nType your first action to begin.`,
+      text: randomIntro + "\nType your first action to begin.",
       role: 'model',
       timestamp: new Date().toISOString()
     }]);
+  }, []);
+
+  useEffect(() => {
+    ambientAudioRef.current = new Audio('/ambience.mp3');
+    ambientAudioRef.current.loop = true;
+    ambientAudioRef.current.volume = 0.2;
   }, []);
 
   const scrollToBottom = () => {
@@ -37,20 +55,14 @@ No stats, no dice — just survival, discovery, and danger in the galaxy's deadl
   }, [displayMessages]);
 
   useEffect(() => inputRef.current?.focus(), []);
-
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) abortControllerRef.current.abort();
-    };
-  }, []);
+  useEffect(() => () => abortControllerRef.current?.abort(), []);
 
   const handleInputChange = (e) => setInputValue(e.target.value);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
-
-    if (abortControllerRef.current) abortControllerRef.current.abort();
+    abortControllerRef.current?.abort();
     abortControllerRef.current = new AbortController();
 
     const userMessage = {
@@ -66,11 +78,7 @@ No stats, no dice — just survival, discovery, and danger in the galaxy's deadl
     setError(null);
 
     try {
-      const history = messages.map(msg => ({
-        role: msg.role,
-        text: msg.text
-      }));
-
+      const history = messages.map(msg => ({ role: msg.role, text: msg.text }));
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,12 +101,18 @@ No stats, no dice — just survival, discovery, and danger in the galaxy's deadl
 
       setDisplayMessages(prev => [...prev, botMessage]);
       setMessages(prev => [...prev, botMessage]);
-      setTimeout(() => scrollToBottom(), 100);
 
+      // Play transmission sound after AI response
+      const randomSound = new Audio(transmissionSounds[Math.floor(Math.random() * transmissionSounds.length)]);
+      randomSound.volume = 0.5;
+      randomSound.play().catch(err => console.warn("Transmission sound blocked:", err));
+
+      setTimeout(() => scrollToBottom(), 100);
     } catch (err) {
       console.error('Error sending message:', err);
-      if (err.name === 'AbortError') return;
-      setError(err.message.includes('timed out') ? err.message : err.message || "Neural link failed.");
+      if (err.name !== 'AbortError') {
+        setError(err.message.includes('timed out') ? err.message : err.message || "Neural link failed.");
+      }
     } finally {
       setIsLoading(false);
       abortControllerRef.current = null;
@@ -112,6 +126,16 @@ No stats, no dice — just survival, discovery, and danger in the galaxy's deadl
       setIsLoading(false);
       setError("Transmission aborted. What's your next move?");
     }
+  };
+
+  const toggleAmbientAudio = () => {
+    if (!ambientAudioRef.current) return;
+    if (ambientPlaying) {
+      ambientAudioRef.current.pause();
+    } else {
+      ambientAudioRef.current.play().catch(err => console.warn("Ambient audio play blocked:", err));
+    }
+    setAmbientPlaying(!ambientPlaying);
   };
 
   const formatText = (text) => {
@@ -132,8 +156,10 @@ No stats, no dice — just survival, discovery, and danger in the galaxy's deadl
     <div className="app-container">
       <header className="app-header">
         <h1 className="app-title">🌑 Moonstone RPG <span className="version">v1.0</span></h1>
-        <div className="nav-links">
-          <a href="https://twitter.com/jaqbek_eth" target="_blank" rel="noopener noreferrer">by @jaqbek_eth</a>
+        <div className="ambient-control">
+          <button className="ambient-button" onClick={toggleAmbientAudio}>
+            {ambientPlaying ? "🔊 Ambient: On" : "🔇 Ambient: Off"}
+          </button>
         </div>
       </header>
 
@@ -144,12 +170,8 @@ No stats, no dice — just survival, discovery, and danger in the galaxy's deadl
 
         <div className="chat-content" ref={chatContentRef}>
           {error && <div className="error-message">{error}</div>}
-
           {displayMessages.map((message, index) => (
-            <div 
-              key={index} 
-              className={`message ${message.role === 'user' ? 'user-message' : 'bot-message'}`}
-            >
+            <div key={index} className={`message ${message.role === 'user' ? 'user-message' : 'bot-message'}`}>
               <div className="message-prompt">
                 <span className="terminal-prefix">{message.role === 'user' ? '>>' : 'GM'}</span>
                 {message.role === 'user' ? ' YOU' : ' GAME MASTER'}
@@ -157,7 +179,6 @@ No stats, no dice — just survival, discovery, and danger in the galaxy's deadl
               <div className="message-text">{formatText(message.text)}</div>
             </div>
           ))}
-
           {isLoading && (
             <div className="message bot-message">
               <div className="message-prompt"><span className="terminal-prefix"></span> GAME MASTER</div>
@@ -167,7 +188,6 @@ No stats, no dice — just survival, discovery, and danger in the galaxy's deadl
               </div>
             </div>
           )}
-
           <div ref={messagesEndRef} style={{ float: 'left', clear: 'both' }}></div>
         </div>
       </div>
@@ -183,11 +203,7 @@ No stats, no dice — just survival, discovery, and danger in the galaxy's deadl
             ref={inputRef}
             disabled={isLoading}
           />
-          <button 
-            type="submit" 
-            className="send-button"
-            disabled={isLoading || !inputValue.trim()}
-          >→</button>
+          <button type="submit" className="send-button" disabled={isLoading || !inputValue.trim()}>→</button>
         </form>
       </div>
 
@@ -195,6 +211,17 @@ No stats, no dice — just survival, discovery, and danger in the galaxy's deadl
         <span className="online-dot"></span>
         <span>Session Active</span>
       </div>
+
+      <footer className="app-footer">
+        <div className="footer-content">
+          <span className="footer-text">🪐 Moonstone RPG</span>
+          <div className="footer-links">
+            <a href="https://twitter.com/jaqbek_eth" target="_blank" rel="noopener noreferrer">@jaqbek_eth</a>
+            <a href="https://github.com/0xjaqbek" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href="https://t.me/jaqbek" target="_blank" rel="noopener noreferrer">Telegram</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

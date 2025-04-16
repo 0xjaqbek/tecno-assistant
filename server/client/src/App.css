@@ -581,6 +581,8 @@ body {
 }
 
 .message-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
   color: var(--text-primary);
   line-height: 1.6;
   /* 3D effect */
@@ -966,4 +968,131 @@ code {
   .message:hover {
     transform: none;
   }
+}
+
+/* Ambient Audio Toggle Button */
+.ambient-control {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  z-index: 20;
+}
+
+.ambient-button {
+  background: rgba(20, 30, 50, 0.6);
+  color: rgba(180, 220, 255, 0.9);
+  border: 1px solid rgba(100, 130, 160, 0.3);
+  padding: 6px 12px;
+  border-radius: 5px;
+  backdrop-filter: blur(5px);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 6px rgba(50, 255, 255, 0.2);
+  box-shadow: 0 0 8px rgba(30, 150, 200, 0.1);
+}
+
+.ambient-button:hover {
+  background: rgba(30, 50, 70, 0.8);
+  border-color: rgba(120, 160, 200, 0.5);
+  box-shadow: 0 0 12px rgba(30, 150, 200, 0.4);
+  text-shadow: 0 0 10px rgba(50, 255, 255, 0.4);
+}
+
+.ambient-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 4px rgba(30, 150, 200, 0.3);
+}
+
+/* Container for the navigation links */
+.nav-links {
+  display: flex;
+  gap: 12px; /* Space between links */
+  flex-wrap: wrap; /* Allow wrapping if window is very narrow */
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Stylish cyberpunk link look */
+.nav-links a {
+  color: rgba(180, 220, 255, 0.9);
+  text-decoration: none;
+  padding: 6px 14px;
+  border: 1px solid rgba(100, 130, 160, 0.3);
+  border-radius: 6px;
+  background: rgba(20, 30, 50, 0.4);
+  backdrop-filter: blur(6px);
+  transition: all 0.3s ease;
+  box-shadow: 0 0 8px rgba(30, 150, 200, 0.1);
+  text-shadow: 0 0 6px rgba(50, 255, 255, 0.2);
+}
+
+/* Hover state — glows like a console button */
+.nav-links a:hover {
+  background: rgba(30, 50, 70, 0.8);
+  border-color: rgba(120, 160, 200, 0.5);
+  box-shadow: 0 0 14px rgba(30, 150, 200, 0.4);
+  text-shadow: 0 0 12px rgba(50, 255, 255, 0.4);
+}
+
+/* Active / Click effect */
+.nav-links a:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 5px rgba(30, 150, 200, 0.3);
+}
+
+/* Footer terminal-style look */
+.app-footer {
+  width: 100%;
+  padding: 10px 20px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(100, 130, 160, 0.2);
+  background: rgba(5, 10, 20, 0.4);
+  backdrop-filter: blur(8px);
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0, 20, 40, 0.3) inset;
+  position: relative;
+  z-index: 5;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  color: rgba(180, 220, 255, 0.7);
+  font-size: 0.85rem;
+}
+
+.footer-text {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.footer-links {
+  display: flex;
+  gap: 15px;
+}
+
+.footer-links a {
+  color: rgba(180, 220, 255, 0.8);
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid rgba(100, 130, 160, 0.3);
+  border-radius: 5px;
+  background: rgba(20, 30, 50, 0.3);
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+  text-shadow: 0 0 6px rgba(50, 255, 255, 0.15);
+}
+
+.footer-links a:hover {
+  background: rgba(30, 50, 70, 0.8);
+  border-color: rgba(120, 160, 200, 0.5);
+  text-shadow: 0 0 12px rgba(50, 255, 255, 0.4);
+}
+
+.footer-links a:active {
+  transform: translateY(1px);
 }
