@@ -1,7 +1,7 @@
 /* Enhanced Glass Effect Styling with 3D Depth */
 
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
 
 :root {
   /* Base colors */
@@ -581,7 +581,7 @@ body {
 }
 
 .message-text {
-  font-family: 'Orbitron', monospace;
+  font-family:  monospace;
   font-size: 1rem;
   color: var(--text-primary);
   line-height: 1.6;

@@ -7,7 +7,8 @@ const GlassChatApp = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [ambientPlaying, setAmbientPlaying] = useState(false);
+  const [ambientPlaying, setAmbientPlaying] = useState(true);
+  const [audioInitialized, setAudioInitialized] = useState(false);
 
   const messagesEndRef = useRef(null);
   const chatContentRef = useRef(null);
@@ -23,25 +24,64 @@ const GlassChatApp = () => {
 
   useEffect(() => {
     const openingScenes = [
-      "🌌 You awaken aboard the starship Arcon. The engines are silent. A blinking red light pulses from the console.",
-      "🛰️ Drift. Darkness. The only sound is the hum of recycled oxygen. The navigation system shows: 'Unknown Sector'.",
-      "⚠️ Hades Station broadcast detected: 'Docking authorization expired. Hostiles inbound. Prepare.'",
-      "🚀 Fuel levels critical. Deep void surrounds you. Something is approaching on the radar.",
-      "💀 Your memory is fragmented. Your mission is unclear. But one word remains: Moonstone."
+      "🌌 Budzisz się na pokładzie statku kosmicznego Arcon. Silniki milczą. Migające czerwone światło pulsuje na konsoli.",
+      "🛰️ Dryfujesz. Ciemność. Jedynym dźwiękiem jest szum recyklowanego tlenu. System nawigacyjny pokazuje: 'Nieznany Sektor'.",
+      "⚠️ Wykryto transmisję ze Stacji Hades: 'Autoryzacja dokowania wygasła. Wrogowie nadciągają. Przygotuj się.'",
+      "🚀 Poziom paliwa krytyczny. Otacza cię głęboka pustka. Coś zbliża się na radarze.",
+      "💀 Twoja pamięć jest fragmentaryczna. Twoja misja jest niejasna. Ale jedno słowo pozostaje: Moonstone."
     ];
     const randomIntro = openingScenes[Math.floor(Math.random() * openingScenes.length)];
     setDisplayMessages([{
-      text: randomIntro + "\nType your first action to begin.",
+      text: randomIntro + "\nWpisz swoją pierwszą akcję, aby rozpocząć.",
       role: 'model',
       timestamp: new Date().toISOString()
     }]);
   }, []);
 
+  // Inicjalizacja dźwięku
   useEffect(() => {
     ambientAudioRef.current = new Audio('/ambience.mp3');
     ambientAudioRef.current.loop = true;
-    ambientAudioRef.current.volume = 0.2;
+    ambientAudioRef.current.volume = 0.7; // Zmniejszona głośność z 0.9
+    setAudioInitialized(true);
   }, []);
+
+  // Dodatkowy useEffect do obsługi autostartu dźwięku
+  useEffect(() => {
+    // Uruchamiaj dźwięk tylko po pełnej inicjalizacji obiektu Audio
+    if (audioInitialized && ambientPlaying && ambientAudioRef.current) {
+      const playPromise = ambientAudioRef.current.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn("Automatyczne odtwarzanie dźwięku zostało zablokowane:", err);
+          // NIE zmieniamy stanu ambientPlaying, aby interfejs nadal pokazywał, że dźwięk jest włączony
+        });
+      }
+    }
+  }, [audioInitialized, ambientPlaying]);
+
+  // Dodaj obsługę interakcji użytkownika do uruchomienia dźwięku
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      if (ambientPlaying && ambientAudioRef.current && ambientAudioRef.current.paused) {
+        ambientAudioRef.current.play().catch(err => 
+          console.warn("Odtwarzanie dźwięku po interakcji zablokowane:", err)
+        );
+      }
+      // Usuwamy nasłuchiwanie po pierwszej interakcji
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
+    };
+
+    document.addEventListener('click', handleUserInteraction);
+    document.addEventListener('keydown', handleUserInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, [ambientPlaying]);
 
   const scrollToBottom = () => {
     if (chatContentRef.current) chatContentRef.current.scrollTop = chatContentRef.current.scrollHeight;
@@ -86,10 +126,10 @@ const GlassChatApp = () => {
         signal: abortControllerRef.current.signal
       });
 
-      if (response.status === 504) throw new Error("Connection lost in hyperspace. Try again.");
+      if (response.status === 504) throw new Error("Utracono połączenie w hiperprzestrzeni. Spróbuj ponownie.");
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || errorData?.details || `Server error: ${response.status}`);
+        throw new Error(errorData?.error || errorData?.details || `Błąd serwera: ${response.status}`);
       }
 
       const data = await response.json();
@@ -104,14 +144,14 @@ const GlassChatApp = () => {
 
       // Play transmission sound after AI response
       const randomSound = new Audio(transmissionSounds[Math.floor(Math.random() * transmissionSounds.length)]);
-      randomSound.volume = 0.5;
-      randomSound.play().catch(err => console.warn("Transmission sound blocked:", err));
+      randomSound.volume = 0.2; // Zmniejszona głośność na 0.2
+      randomSound.play().catch(err => console.warn("Dźwięk transmisji zablokowany:", err));
 
       setTimeout(() => scrollToBottom(), 100);
     } catch (err) {
-      console.error('Error sending message:', err);
+      console.error('Błąd wysyłania wiadomości:', err);
       if (err.name !== 'AbortError') {
-        setError(err.message.includes('timed out') ? err.message : err.message || "Neural link failed.");
+        setError(err.message.includes('timed out') ? err.message : err.message || "Połączenie neuronowe nie powiodło się.");
       }
     } finally {
       setIsLoading(false);
@@ -124,7 +164,7 @@ const GlassChatApp = () => {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
       setIsLoading(false);
-      setError("Transmission aborted. What's your next move?");
+      setError("Transmisja przerwana. Jaki jest twój następny ruch?");
     }
   };
 
@@ -133,7 +173,7 @@ const GlassChatApp = () => {
     if (ambientPlaying) {
       ambientAudioRef.current.pause();
     } else {
-      ambientAudioRef.current.play().catch(err => console.warn("Ambient audio play blocked:", err));
+      ambientAudioRef.current.play().catch(err => console.warn("Odtwarzanie dźwięku otoczenia zablokowane:", err));
     }
     setAmbientPlaying(!ambientPlaying);
   };
@@ -158,14 +198,14 @@ const GlassChatApp = () => {
         <h1 className="app-title">🌑 Moonstone RPG <span className="version">v1.0</span></h1>
         <div className="ambient-control">
           <button className="ambient-button" onClick={toggleAmbientAudio}>
-            {ambientPlaying ? "🔊 Ambient: On" : "🔇 Ambient: Off"}
+            {ambientPlaying ? "🔊 Dźwięki: Wł." : "🔇 Dźwięki: Wył."}
           </button>
         </div>
       </header>
 
       <div className="chat-window">
         <div className="chat-window-header">
-          <div className="window-title">Moonstone Universe — AI-Powered Roleplay</div>
+          <div className="window-title">Uniwersum Moonstone — Roleplay napędzany SI</div>
         </div>
 
         <div className="chat-content" ref={chatContentRef}>
@@ -173,18 +213,18 @@ const GlassChatApp = () => {
           {displayMessages.map((message, index) => (
             <div key={index} className={`message ${message.role === 'user' ? 'user-message' : 'bot-message'}`}>
               <div className="message-prompt">
-                <span className="terminal-prefix">{message.role === 'user' ? '>>' : 'GM'}</span>
-                {message.role === 'user' ? ' YOU' : ' GAME MASTER'}
+                <span className="terminal-prefix">{message.role === 'user' ? '>>' : 'MG'}</span>
+                {message.role === 'user' ? ' TY' : ' MISTRZ GRY'}
               </div>
               <div className="message-text">{formatText(message.text)}</div>
             </div>
           ))}
           {isLoading && (
             <div className="message bot-message">
-              <div className="message-prompt"><span className="terminal-prefix"></span> GAME MASTER</div>
+              <div className="message-prompt"><span className="terminal-prefix"></span> MISTRZ GRY</div>
               <div className="message-text">
-                <div className="loading"></div> Calculating outcome...
-                <button onClick={handleCancelRequest} className="cancel-button">CANCEL</button>
+                <div className="loading"></div> Obliczanie wyniku...
+                <button onClick={handleCancelRequest} className="cancel-button">ANULUJ</button>
               </div>
             </div>
           )}
@@ -198,7 +238,7 @@ const GlassChatApp = () => {
             type="text"
             value={inputValue}
             onChange={handleInputChange}
-            placeholder="What is your next action?"
+            placeholder="Jaka jest twoja następna akcja?"
             className="message-input"
             ref={inputRef}
             disabled={isLoading}
@@ -209,7 +249,7 @@ const GlassChatApp = () => {
 
       <div className="status-indicator">
         <span className="online-dot"></span>
-        <span>Session Active</span>
+        <span>Sesja aktywna</span>
       </div>
 
       <footer className="app-footer">
