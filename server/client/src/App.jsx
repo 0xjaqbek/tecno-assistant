@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
-const GlassChatApp = () => {
+const MoonstoneApp = () => {
   const [messages, setMessages] = useState([]);
   const [displayMessages, setDisplayMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -284,7 +284,7 @@ const GlassChatApp = () => {
           ))}
           {isLoading && (
             <div className="message bot-message">
-              <div className="message-prompt"><span className="terminal-prefix"></span> MISTRZ GRY</div>
+              <div className="message-prompt"><span className="terminal-prefix">MG</span> MISTRZ GRY</div>
               <div className="message-text">
                 <div className="loading"></div> Obliczanie wyniku...
                 <button onClick={handleCancelRequest} className="cancel-button">ANULUJ</button>
@@ -309,7 +309,6 @@ const GlassChatApp = () => {
           />
           <button type="submit" className="send-button" disabled={isLoading || !inputValue.trim()}>→</button>
         </form>
-        <div className="input-area-frost"></div>
       </div>
 
       <div className="status-indicator">
@@ -330,4 +329,4 @@ const GlassChatApp = () => {
   );
 };
 
-export default GlassChatApp;
+export default MoonstoneApp;
