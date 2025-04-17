@@ -7,15 +7,17 @@
 
 // Define environment handling that works in both browser and Node.js
 const getEnvironment = () => {
-    if (typeof process !== 'undefined' && process.env) {
+    // Check if we're in a Node.js environment
+    if (typeof window === 'undefined' && typeof process !== 'undefined' && process.env) {
       return process.env;
     }
-    return {}; // Empty object for browser environment
+    // For browser environment, return a default empty object
+    return {}; 
   };
-  
+    
   // Load environment variables safely
   const env = getEnvironment();
-  
+    
   // Utility function to get value from environment or use default
   function getEnvValue(key, defaultValue) {
     if (typeof env[key] === 'undefined') return defaultValue;
@@ -29,7 +31,7 @@ const getEnvironment = () => {
       return env[key];
     }
   }
-  
+    
   // Create the actual config object with environment variable support
   const securityConfigDefaults = {
     /**
@@ -177,7 +179,7 @@ const getEnvironment = () => {
       useDistributedStorage: getEnvValue('USE_DISTRIBUTED_STORAGE', false)
     }
   };
-  
+    
   /**
    * Validate configuration values and ensure they are within acceptable ranges
    * @param {object} config - Configuration object to validate
@@ -210,7 +212,7 @@ const getEnvironment = () => {
     
     return validated;
   }
-  
+    
   // Export the validated configuration
   const securityConfig = validateConfig(securityConfigDefaults);
   export default securityConfig;
