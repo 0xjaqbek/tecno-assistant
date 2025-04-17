@@ -765,3 +765,58 @@ code {
     transform: none;
   }
 }
+
+/* Add these styles to your App.css file */
+
+.typed-text {
+  display: inline;
+  position: relative;
+  word-break: break-word;
+}
+
+.cursor {
+  display: inline-block;
+  width: 3px;
+  height: 1em;
+  margin-left: 2px;
+  background-color: var(--accent-color);
+  animation: blink 0.7s infinite;
+  vertical-align: middle;
+  opacity: 0.7;
+  border-radius: 1px;
+  box-shadow: 0 0 5px var(--accent-glow);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* Create a style for in-progress typing */
+.bot-message.typing .message-text {
+  background: linear-gradient(90deg, 
+    var(--bot-msg-bg) 0%,
+    rgba(10, 25, 40, 0.6) 50%, 
+    var(--bot-msg-bg) 100%);
+  background-size: 200% 100%;
+  animation: pulse-bg 2s infinite ease-in-out;
+}
+
+@keyframes pulse-bg {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Enhance the look of code blocks in typed text */
+.typed-text pre {
+  margin: 12px 0;
+  padding: 10px;
+  border-radius: 4px;
+  background: rgba(0, 22, 38, 0.6);
+  overflow-x: auto;
+}
+
+.typed-text code {
+  font-family: 'Courier New', monospace;
+  color: var(--accent-color);
+}

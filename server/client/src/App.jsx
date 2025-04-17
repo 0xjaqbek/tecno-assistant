@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
+import TypedText from './TypedText'; // Import the TypedText component
 
 const SpaceThemedChatApp = () => {
   const [messages, setMessages] = useState([]);
@@ -11,6 +12,7 @@ const SpaceThemedChatApp = () => {
   const [audioInitialized, setAudioInitialized] = useState(false);
   const [warningMessage, setWarningMessage] = useState(null);
   const [consecutiveWarnings, setConsecutiveWarnings] = useState(0);
+  const [typingComplete, setTypingComplete] = useState({}); // Track which messages are done typing
 
   const messagesEndRef = useRef(null);
   const chatContentRef = useRef(null);
@@ -34,11 +36,14 @@ const SpaceThemedChatApp = () => {
       "💀 Twoja pamięć jest fragmentaryczna. Twoja misja jest niejasna. Ale jedno słowo pozostaje: Moonstone."
     ];
     const randomIntro = openingScenes[Math.floor(Math.random() * openingScenes.length)];
-    setDisplayMessages([{
+    const introMessage = {
       text: randomIntro + "\nWpisz swoją pierwszą akcję, aby rozpocząć.",
       role: 'model',
-      timestamp: new Date().toISOString()
-    }]);
+      timestamp: new Date().toISOString(),
+      id: 'intro-message'
+    };
+    setDisplayMessages([introMessage]);
+    setTypingComplete({['intro-message']: true}); // Mark intro as already complete
   }, []);
 
   // Audio initialization
@@ -94,7 +99,7 @@ const SpaceThemedChatApp = () => {
     scrollToBottom();
     const timeoutId = setTimeout(() => scrollToBottom(), 100);
     return () => clearTimeout(timeoutId);
-  }, [displayMessages]);
+  }, [displayMessages, typingComplete]);
 
   useEffect(() => inputRef.current?.focus(), []);
   useEffect(() => () => abortControllerRef.current?.abort(), []);
@@ -164,10 +169,14 @@ const SpaceThemedChatApp = () => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = new AbortController();
 
+    // Generate a unique ID for this message
+    const messageId = `msg-${Date.now()}`;
+
     const userMessage = {
       text: trimmedInput,
       role: 'user',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      id: `user-${messageId}`
     };
 
     setDisplayMessages(prev => [...prev, userMessage]);
@@ -176,6 +185,9 @@ const SpaceThemedChatApp = () => {
     setIsLoading(true);
     setError(null);
     setWarningMessage(null);
+    
+    // Mark user message as completely typed (it doesn't need the effect)
+    setTypingComplete(prev => ({...prev, [`user-${messageId}`]: true}));
 
     try {
       const history = messages.map(msg => ({ role: msg.role, text: msg.text }));
@@ -198,7 +210,8 @@ const SpaceThemedChatApp = () => {
       const botMessage = {
         text: data.response,
         role: 'model',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        id: `bot-${messageId}`
       };
 
       setDisplayMessages(prev => [...prev, botMessage]);
@@ -209,7 +222,7 @@ const SpaceThemedChatApp = () => {
       randomSound.volume = 0.2;
       randomSound.play().catch(err => console.warn("Dźwięk transmisji zablokowany:", err));
 
-      setTimeout(() => scrollToBottom(), 100);
+      // The typing effect component will handle scrolling when complete
     } catch (err) {
       console.error('Błąd wysyłania wiadomości:', err);
       if (err.name !== 'AbortError') {
@@ -240,18 +253,41 @@ const SpaceThemedChatApp = () => {
     setAmbientPlaying(!ambientPlaying);
   };
 
-  const formatText = (text) => {
+  // Handle typing completion for a message
+  const handleTypingComplete = (messageId) => {
+    setTypingComplete(prev => ({...prev, [messageId]: true}));
+    // Scroll to bottom after typing completes
+    setTimeout(scrollToBottom, 100);
+  };
+
+  const formatText = (text, messageId, isTyping) => {
     if (!text) return '';
-    return text.split('```').map((segment, index) => {
-      if (index % 2 === 1) {
-        const codeLines = segment.split('\n');
-        const language = codeLines[0].trim();
-        const code = codeLines.slice(1).join('\n');
-        return <pre key={index}><code className={language ? `language-${language}` : ''}>{code}</code></pre>;
-      } else {
-        return <div key={index}>{segment.split('`').map((part, idx) => idx % 2 === 1 ? <code key={idx}>{part}</code> : <span key={idx}>{part}</span>)}</div>;
-      }
-    });
+    
+    // For user messages or completed bot messages, render normally
+    if (!isTyping) {
+      return text.split('```').map((segment, index) => {
+        if (index % 2 === 1) {
+          const codeLines = segment.split('\n');
+          const language = codeLines[0].trim();
+          const code = codeLines.slice(1).join('\n');
+          return <pre key={index}><code className={language ? `language-${language}` : ''}>{code}</code></pre>;
+        } else {
+          return <div key={index}>{segment.split('`').map((part, idx) => 
+            idx % 2 === 1 ? <code key={idx}>{part}</code> : <span key={idx}>{part}</span>
+          )}</div>;
+        }
+      });
+    }
+    
+    // For bot messages that need typing animation
+    return (
+      <TypedText 
+        text={text} 
+        wordsPerChunk={Math.floor(Math.random() * 4) + 2} // Random 2-5 words per chunk
+        typingSpeed={80} 
+        onComplete={() => handleTypingComplete(messageId)}
+      />
+    );
   };
 
   return (
@@ -279,7 +315,13 @@ const SpaceThemedChatApp = () => {
                 <span className="terminal-prefix">{message.role === 'user' ? '>>' : '<<'}</span>
                 {message.role === 'user' ? ' TY' : ' MISTRZ GRY'}
               </div>
-              <div className="message-text">{formatText(message.text)}</div>
+              <div className="message-text">
+                {formatText(
+                  message.text, 
+                  message.id, 
+                  message.role === 'model' && !typingComplete[message.id]
+                )}
+              </div>
             </div>
           ))}
           {isLoading && (
