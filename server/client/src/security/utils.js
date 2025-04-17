@@ -278,23 +278,25 @@ import {
         ...context
       };
       
-      // Console log for development
-      if (process.env.NODE_ENV !== 'production') {
+      // Determine environment (browser vs node)
+      const isBrowser = typeof window !== 'undefined';
+      
+      // Console log for development 
+      if (isBrowser && window.location?.hostname === 'localhost') {
         console.warn(`[SECURITY EVENT] ${timestamp} - ${type}`);
         console.warn(JSON.stringify(logEntry, null, 2));
       }
       
       // In production, we would send this to a logging service
-      if (process.env.NODE_ENV === 'production') {
+      const isProduction = isBrowser && 
+                           window.location?.hostname !== 'localhost' && 
+                           window.location?.hostname !== '127.0.0.1';
+                          
+      if (isProduction) {
         // Example: send to external logging service
         // This would be implemented based on your preferred logging solution
-        if (typeof window !== 'undefined') {
-          // Browser environment
-          // Example: Send to browser analytics or monitoring service
-        } else {
-          // Server environment
-          // Example: Write to structured log file or send to log aggregator
-        }
+        // For now, just log to console
+        console.warn(`[SECURITY EVENT] ${timestamp} - ${type}`);
       }
       
       return logEntry;

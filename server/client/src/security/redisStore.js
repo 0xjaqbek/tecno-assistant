@@ -60,8 +60,9 @@ export async function getRateLimitData(userId) {
   if (!redisAvailable || !redisClient) return null;
   
   try {
-    const key = `rate_limit:${userId}`;
-    const data = await redisClient.get(key);
+    // Create Redis key with user ID prefix
+    const storageKey = `rate_limit:${userId}`;
+    const data = await redisClient.get(storageKey);
     
     if (!data) return null;
     
@@ -83,8 +84,9 @@ export async function setRateLimitData(userId, data, ttl = 3600) {
   if (!redisAvailable || !redisClient) return false;
   
   try {
-    const key = `rate_limit:${userId}`;
-    await redisClient.set(key, JSON.stringify(data), { EX: ttl });
+    // Create Redis key with user ID prefix
+    const storageKey = `rate_limit:${userId}`;
+    await redisClient.set(storageKey, JSON.stringify(data), { EX: ttl });
     
     return true;
   } catch (error) {
@@ -105,7 +107,6 @@ export async function incrementRequestCount(userId) {
   }
   
   try {
-    const key = `rate_limit:${userId}`;
     const windowMs = securityConfig.rateLimiting.windowMs;
     const now = Date.now();
     
@@ -140,8 +141,9 @@ export async function getSecurityHistory(userId) {
   if (!redisAvailable || !redisClient) return null;
   
   try {
-    const key = `security_history:${userId}`;
-    const data = await redisClient.get(key);
+    // Create Redis key with user ID prefix
+    const storageKey = `security_history:${userId}`;
+    const data = await redisClient.get(storageKey);
     
     if (!data) return { events: [] };
     
@@ -162,7 +164,8 @@ export async function addSecurityEvent(userId, event) {
   if (!redisAvailable || !redisClient) return false;
   
   try {
-    const key = `security_history:${userId}`;
+    // Create Redis key with user ID prefix
+    const storageKey = `security_history:${userId}`;
     
     // Get existing history or create new
     const history = await getSecurityHistory(userId) || { events: [] };
@@ -180,7 +183,7 @@ export async function addSecurityEvent(userId, event) {
     }
     
     // Store updated history with a long TTL (30 days)
-    await redisClient.set(key, JSON.stringify(history), { EX: 30 * 24 * 60 * 60 });
+    await redisClient.set(storageKey, JSON.stringify(history), { EX: 30 * 24 * 60 * 60 });
     
     return true;
   } catch (error) {
@@ -198,13 +201,14 @@ export async function getBanStatus(userId) {
   if (!redisAvailable || !redisClient) return { banned: false };
   
   try {
-    const key = `banned:${userId}`;
-    const data = await redisClient.get(key);
+    // Create Redis key with user ID prefix
+    const storageKey = `banned:${userId}`;
+    const data = await redisClient.get(storageKey);
     
     if (!data) return { banned: false };
     
     // Get TTL to know when ban expires
-    const ttl = await redisClient.ttl(key);
+    const ttl = await redisClient.ttl(storageKey);
     const banData = JSON.parse(data);
     
     return {
@@ -230,13 +234,14 @@ export async function setBanStatus(userId, reason, durationSeconds) {
   if (!redisAvailable || !redisClient) return false;
   
   try {
-    const key = `banned:${userId}`;
+    // Create Redis key with user ID prefix
+    const storageKey = `banned:${userId}`;
     const banData = {
       reason,
       timestamp: new Date().toISOString()
     };
     
-    await redisClient.set(key, JSON.stringify(banData), { EX: durationSeconds });
+    await redisClient.set(storageKey, JSON.stringify(banData), { EX: durationSeconds });
     
     return true;
   } catch (error) {
