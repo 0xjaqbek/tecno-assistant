@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
 
 // Import enhanced security modules
-import securityConfig from './src/security/config.js';
+import securityConfig from './client/src/security/config.js';
 import {
   sanitizeInput,
   detectJailbreakAttempt,
