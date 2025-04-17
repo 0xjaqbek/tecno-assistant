@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
-const MoonstoneApp = () => {
+const SpaceThemedChatApp = () => {
   const [messages, setMessages] = useState([]);
   const [displayMessages, setDisplayMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -257,17 +257,17 @@ const MoonstoneApp = () => {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1 className="app-title">🌑 Moonstone RPG <span className="version">v1.1</span></h1>
+        <h1 className="app-title">Projektor Snów 🌑<span className="version">v1.2</span></h1>
         <div className="ambient-control">
           <button className="ambient-button" onClick={toggleAmbientAudio}>
-            {ambientPlaying ? "🔊 Dźwięki: Wł." : "🔇 Dźwięki: Wył."}
+            {ambientPlaying ? "🔊" : "🔇"}
           </button>
         </div>
       </header>
 
       <div className="chat-window">
         <div className="chat-window-header">
-          <div className="window-title">Uniwersum Moonstone — Roleplay napędzany SI</div>
+          <div className="window-title">Roleplay napędzany AI</div>
         </div>
 
         <div className="chat-content" ref={chatContentRef}>
@@ -276,7 +276,7 @@ const MoonstoneApp = () => {
           {displayMessages.map((message, index) => (
             <div key={index} className={`message ${message.role === 'user' ? 'user-message' : 'bot-message'}`}>
               <div className="message-prompt">
-                <span className="terminal-prefix">{message.role === 'user' ? '>>' : 'MG'}</span>
+                <span className="terminal-prefix">{message.role === 'user' ? '>>' : '<<'}</span>
                 {message.role === 'user' ? ' TY' : ' MISTRZ GRY'}
               </div>
               <div className="message-text">{formatText(message.text)}</div>
@@ -309,6 +309,7 @@ const MoonstoneApp = () => {
           />
           <button type="submit" className="send-button" disabled={isLoading || !inputValue.trim()}>→</button>
         </form>
+        <div className="input-area-frost"></div>
       </div>
 
       <div className="status-indicator">
@@ -318,15 +319,11 @@ const MoonstoneApp = () => {
 
       <footer className="app-footer">
         <div className="footer-content">
-          <span className="footer-text">🪐 Moonstone RPG</span>
-          <div className="footer-links">
-            <a href="https://twitter.com/jaqbek_eth" target="_blank" rel="noopener noreferrer">@jaqbek_eth</a>
-            <a href="https://t.me/jaqbek" target="_blank" rel="noopener noreferrer">Telegram</a>
-          </div>
+          <span className="footer-text">🪐</span>
         </div>
       </footer>
     </div>
   );
 };
 
-export default MoonstoneApp;
+export default SpaceThemedChatApp;
