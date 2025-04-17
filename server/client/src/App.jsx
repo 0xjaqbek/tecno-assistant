@@ -257,7 +257,7 @@ const GlassChatApp = () => {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1 className="app-title">🌑 Moonstone RPG <span className="version">v1.0</span></h1>
+        <h1 className="app-title">🌑 Moonstone RPG <span className="version">v1.1</span></h1>
         <div className="ambient-control">
           <button className="ambient-button" onClick={toggleAmbientAudio}>
             {ambientPlaying ? "🔊 Dźwięki: Wł." : "🔇 Dźwięki: Wył."}
