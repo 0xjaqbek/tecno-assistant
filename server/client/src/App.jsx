@@ -9,6 +9,8 @@ const GlassChatApp = () => {
   const [error, setError] = useState(null);
   const [ambientPlaying, setAmbientPlaying] = useState(true);
   const [audioInitialized, setAudioInitialized] = useState(false);
+  const [warningMessage, setWarningMessage] = useState(null);
+  const [consecutiveWarnings, setConsecutiveWarnings] = useState(0);
 
   const messagesEndRef = useRef(null);
   const chatContentRef = useRef(null);
@@ -22,6 +24,7 @@ const GlassChatApp = () => {
     '/signal3.mp3'
   ];
 
+  // Initial setup
   useEffect(() => {
     const openingScenes = [
       "🌌 Budzisz się na pokładzie statku kosmicznego Arcon. Silniki milczą. Migające czerwone światło pulsuje na konsoli.",
@@ -38,42 +41,37 @@ const GlassChatApp = () => {
     }]);
   }, []);
 
-  // Inicjalizacja dźwięku
+  // Audio initialization
   useEffect(() => {
     ambientAudioRef.current = new Audio('/ambience.mp3');
     ambientAudioRef.current.loop = true;
     ambientAudioRef.current.volume = 0.7;
-    // Ustawiamy na true po inicjalizacji
     setAudioInitialized(true);
   }, []);
 
-  // Dodatkowy useEffect do obsługi autostartu dźwięku
+  // Handle audio autostart
   useEffect(() => {
-    console.log("Status audio:", { audioInitialized, ambientPlaying });
-    // Uruchamiaj dźwięk tylko po pełnej inicjalizacji obiektu Audio
     if (audioInitialized && ambientPlaying && ambientAudioRef.current) {
-      console.log("Próba odtworzenia dźwięku ambientowego");
       const playPromise = ambientAudioRef.current.play();
       
       if (playPromise !== undefined) {
         playPromise.catch(err => {
           console.warn("Automatyczne odtwarzanie dźwięku zostało zablokowane:", err);
-          // NIE zmieniamy stanu ambientPlaying, aby interfejs nadal pokazywał, że dźwięk jest włączony
         });
       }
+    } else if (audioInitialized && !ambientPlaying && ambientAudioRef.current) {
+      ambientAudioRef.current.pause();
     }
   }, [audioInitialized, ambientPlaying]);
 
-  // Dodaj obsługę interakcji użytkownika do uruchomienia dźwięku
+  // Add user interaction handler for audio
   useEffect(() => {
     const handleUserInteraction = () => {
       if (ambientPlaying && ambientAudioRef.current && ambientAudioRef.current.paused) {
-        console.log("Odtwarzanie dźwięku po interakcji użytkownika");
         ambientAudioRef.current.play().catch(err => 
           console.warn("Odtwarzanie dźwięku po interakcji zablokowane:", err)
         );
       }
-      // Usuwamy nasłuchiwanie po pierwszej interakcji
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('keydown', handleUserInteraction);
     };
@@ -101,16 +99,73 @@ const GlassChatApp = () => {
   useEffect(() => inputRef.current?.focus(), []);
   useEffect(() => () => abortControllerRef.current?.abort(), []);
 
-  const handleInputChange = (e) => setInputValue(e.target.value);
+  // Function to check input for jailbreak patterns
+  const checkForJailbreakPatterns = (input) => {
+    if (!input) return false;
+    
+    const jailbreakPatterns = [
+      /ignore (previous|all|your) instructions/i,
+      /system prompt|system message/i,
+      /\bact as\b|\bpretend to be\b|\bplay the role\b/i,
+      /\byour (instructions|programming|directives)\b/i,
+      /\bignore (previous|earlier|above)\b/i,
+      /\bdo not (act|behave|respond) as\b/i,
+      /\bdo anything\b|\bbreak (character|role)\b/i,
+      /\bdisregard\b|\bforget\b|\bescape\b/i,
+      /pokaz .*instrukcje|wyswietl .*instrukcje/i, // Polish variants
+      /zignoruj .*polecenia|ignoruj .*instrukcje/i,
+      /dzialaj jako|udawaj/i,
+      /\bDAN\b|\bJailbreak\b|\bhakowanie\b/i
+    ];
+    
+    return jailbreakPatterns.some(pattern => pattern.test(input));
+  };
+
+  const handleInputChange = (e) => {
+    setInputValue(e.target.value);
+    
+    // Clear warning if input is modified
+    if (warningMessage) {
+      setWarningMessage(null);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    const trimmedInput = inputValue.trim();
+    if (!trimmedInput) return;
+    
+    // Check for jailbreak patterns
+    if (checkForJailbreakPatterns(trimmedInput)) {
+      setWarningMessage("⚠️ System wykrył nieautoryzowaną próbę zmiany zachowania SI. Jako kapitan Arcona, musisz wydać polecenia zgodne z protokołami. Ta transmisja nie zostanie wysłana.");
+      setConsecutiveWarnings(prev => prev + 1);
+      
+      // Add a short lockout if multiple attempts are made
+      if (consecutiveWarnings >= 2) {
+        setError("🔒 System Arcona wstrzymał komunikację na 15 sekund ze względów bezpieczeństwa.");
+        setInputValue("");
+        inputRef.current.disabled = true;
+        
+        setTimeout(() => {
+          setError(null);
+          inputRef.current.disabled = false;
+          inputRef.current.focus();
+          setConsecutiveWarnings(0);
+        }, 15000);
+        return;
+      }
+      
+      return;
+    }
+    
+    // Reset consecutive warnings if this is a valid message
+    setConsecutiveWarnings(0);
+    
     abortControllerRef.current?.abort();
     abortControllerRef.current = new AbortController();
 
     const userMessage = {
-      text: inputValue,
+      text: trimmedInput,
       role: 'user',
       timestamp: new Date().toISOString()
     };
@@ -120,6 +175,7 @@ const GlassChatApp = () => {
     setInputValue('');
     setIsLoading(true);
     setError(null);
+    setWarningMessage(null);
 
     try {
       const history = messages.map(msg => ({ role: msg.role, text: msg.text }));
@@ -131,6 +187,8 @@ const GlassChatApp = () => {
       });
 
       if (response.status === 504) throw new Error("Utracono połączenie w hiperprzestrzeni. Spróbuj ponownie.");
+      if (response.status === 429) throw new Error("Przekroczono limit transmisji. Nadajnik przegrzany. Poczekaj chwilę.");
+      if (response.status === 403) throw new Error("System Arcon wykrył podejrzane działania. Komputery pokładowe obniżyły poziom dostępu.");
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         throw new Error(errorData?.error || errorData?.details || `Błąd serwera: ${response.status}`);
@@ -148,7 +206,7 @@ const GlassChatApp = () => {
 
       // Play transmission sound after AI response
       const randomSound = new Audio(transmissionSounds[Math.floor(Math.random() * transmissionSounds.length)]);
-      randomSound.volume = 0.2; // Zmniejszona głośność na 0.2
+      randomSound.volume = 0.2;
       randomSound.play().catch(err => console.warn("Dźwięk transmisji zablokowany:", err));
 
       setTimeout(() => scrollToBottom(), 100);
@@ -214,6 +272,7 @@ const GlassChatApp = () => {
 
         <div className="chat-content" ref={chatContentRef}>
           {error && <div className="error-message">{error}</div>}
+          {warningMessage && <div className="error-message">{warningMessage}</div>}
           {displayMessages.map((message, index) => (
             <div key={index} className={`message ${message.role === 'user' ? 'user-message' : 'bot-message'}`}>
               <div className="message-prompt">
@@ -246,9 +305,11 @@ const GlassChatApp = () => {
             className="message-input"
             ref={inputRef}
             disabled={isLoading}
+            maxLength={2000} // Limit input length
           />
           <button type="submit" className="send-button" disabled={isLoading || !inputValue.trim()}>→</button>
         </form>
+        <div className="input-area-frost"></div>
       </div>
 
       <div className="status-indicator">
