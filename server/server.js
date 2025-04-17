@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
 
-// Import enhanced security modules
+// Import enhanced security modules with corrected paths
 import securityConfig from './client/src/security/config.js';
 import {
   sanitizeInput,
@@ -14,7 +14,7 @@ import {
   getSecurityMessage,
   logSecurityEvent,
   generateSecureSystemMessage
-} from './src/security/utils.js';
+} from './client/src/security/utils.js';
 
 // Import Redis store for distributed security (if enabled)
 import {
@@ -24,7 +24,7 @@ import {
   addSecurityEvent,
   getBanStatus,
   setBanStatus
-} from './src/security/redisStore.js';
+} from './client/src/security/redisStore.js';
 
 // In ES modules, __dirname is not available, so we create it
 const __filename = fileURLToPath(import.meta.url);
