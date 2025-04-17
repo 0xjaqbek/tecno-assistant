@@ -5,6 +5,9 @@
  * This file centralizes all security settings with appropriate defaults.
  */
 
+/* eslint-disable no-undef */
+// ^ This directive tells ESLint to ignore 'no-undef' errors in this file
+
 // Define environment handling that works in both browser and Node.js
 const getEnvironment = () => {
     // Check if we're in a Node.js environment
@@ -216,3 +219,4 @@ const getEnvironment = () => {
   // Export the validated configuration
   const securityConfig = validateConfig(securityConfigDefaults);
   export default securityConfig;
+  /* eslint-enable no-undef */
