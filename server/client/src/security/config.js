@@ -65,13 +65,13 @@ const getEnvironment = () => {
       threshold: getEnvValue('JAILBREAK_THRESHOLD', 15),
       
       // Number of suspicious attempts before enhanced monitoring
-      warningThreshold: getEnvValue('JAILBREAK_WARNING_THRESHOLD', 2),
+      warningThreshold: getEnvValue('JAILBREAK_WARNING_THRESHOLD', 1),
       
       // Number of suspicious attempts before temporary restrictions
-      restrictionThreshold: getEnvValue('JAILBREAK_BLOCK_THRESHOLD', 5),
+      restrictionThreshold: getEnvValue('JAILBREAK_BLOCK_THRESHOLD', 3),
       
       // Time window for counting restriction violations (milliseconds)
-      restrictionWindowMs: getEnvValue('JAILBREAK_WINDOW_MS', 15 * 60 * 1000), // 15 minutes
+      restrictionWindowMs: getEnvValue('JAILBREAK_WINDOW_MS', 5 * 60 * 1000), // 5 minutes
       
       // Time to restrict access after exceeding threshold (milliseconds)
       restrictionDurationMs: getEnvValue('JAILBREAK_BLOCK_DURATION_MS', 15 * 60 * 1000), // 15 minutes
@@ -143,7 +143,7 @@ const getEnvironment = () => {
       enableLogging: getEnvValue('ENABLE_SECURITY_LOGGING', true),
       
       // Security events to log
-      logEvents: ['jailbreak', 'rateLimit', 'suspicious', 'outOfCharacter'],
+      logEvents: ['jailbreak', 'rateLimit',   'outOfCharacter', 'suspicious_input'],
       
       // Whether to include user input in logs (may contain sensitive data)
       logUserInput: getEnvValue('LOG_USER_INPUT', true),
