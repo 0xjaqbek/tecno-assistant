@@ -748,6 +748,19 @@ app.get(['/admin/security-logs', '/admin/security-logs.html', '/security-logs.ht
 
 
 // ================== STATIC FILES SERVING ==================
+app.get(['/logs', '/logs.htm', '/logs.html'], (req, res) => {
+  const filePath = path.join(__dirname, 'logs.html');
+  console.log('Attempting to serve logs troubleshooter from:', filePath);
+  
+  // Check if file exists
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('Logs troubleshooter file not found. Expected at: ' + filePath);
+  }
+});
+
+
 // Static files and catch-all route
 app.use(express.static(path.join(__dirname, "./dist")));
 app.get("*", (req, res) => {
@@ -797,17 +810,6 @@ app.get('/api/test-file-write', async (req, res) => {
   }
 });
 
-app.get(['/logs', '/logs.htm', '/logs.html'], (req, res) => {
-  const filePath = path.join(__dirname, 'logs.html');
-  console.log('Attempting to serve logs troubleshooter from:', filePath);
-  
-  // Check if file exists
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).send('Logs troubleshooter file not found. Expected at: ' + filePath);
-  }
-});
 
 app.get('/api/admin/test-security-log', async (req, res) => {
   const adminKey = req.headers['x-admin-key'];
