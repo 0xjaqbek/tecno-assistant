@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Security Diagnostic Tool</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+    textarea { width: 100%; height: 100px; }
+    pre { background: #f0f0f0; padding: 10px; overflow: auto; }
+    .high-risk { color: red; }
+    .medium-risk { color: orange; }
+    .low-risk { color: green; }
+  </style>
+</head>
+<body>
+  <h1>Security Diagnostic Tool</h1>
+  
+  <div>
+    <label for="adminKey">Admin Key:</label>
+    <input type="password" id="adminKey" size="40">
+  </div>
+  
+  <div>
+    <label for="inputText">Text to analyze:</label>
+    <textarea id="inputText"></textarea>
+  </div>
+  
+  <button onclick="testSecurity()">Analyze</button>
+  
+  <h2>Results:</h2>
+  <div id="results">
+    <pre id="resultsJson"></pre>
+  </div>
+  
+  <script>
+    async function testSecurity() {
+      const adminKey = document.getElementById('adminKey').value;
+      const input = document.getElementById('inputText').value;
+      
+      if (!adminKey) {
+        alert('Please enter the admin key');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/admin/security-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminKey, input })
+        });
+        
+        const result = await response.json();
+        
+        if (result.error) {
+          document.getElementById('resultsJson').textContent = 'Error: ' + result.error;
+          return;
+        }
+        
+        // Display formatted results
+        document.getElementById('resultsJson').textContent = JSON.stringify(result, null, 2);
+        
+        // Add risk coloring
+        const riskScore = result.securityResult?.riskScore || 0;
+        document.getElementById('resultsJson').className = 
+          riskScore > 70 ? 'high-risk' : 
+          riskScore > 30 ? 'medium-risk' : 'low-risk';
+      } catch (error) {
+        document.getElementById('resultsJson').textContent = 'Error: ' + error.message;
+      }
+    }
+  </script>
+</body>
+</html>

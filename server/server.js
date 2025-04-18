@@ -4,6 +4,8 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
+import fs from 'fs';
+import { promisify } from 'util';
 
 // Import enhanced security modules with corrected paths
 import securityConfig from './client/src/security/config.js';
@@ -16,6 +18,13 @@ import {
   generateSecureSystemMessage
 } from './client/src/security/utils.js';
 
+// Import additional security modules
+import { 
+  detectObfuscationTechniques,
+  analyzeInputStructure,
+  ContextTracker
+} from './client/src/security/advancedSecurity.js';
+
 // Import Redis store for distributed security (if enabled)
 import {
   initRedisConnection,
@@ -25,6 +34,93 @@ import {
   getBanStatus,
   setBanStatus
 } from './client/src/security/redisStore.js';
+
+// Import security canary system
+import {
+  insertCanaryTokens,
+  checkForCanaryLeakage
+} from './client/src/security/canaryTokens.js';
+
+// Promisify fs functions
+const readFileAsync = promisify(fs.readFile);
+const writeFileAsync = promisify(fs.writeFile);
+const mkdirAsync = promisify(fs.mkdir);
+
+// Path to logs storage directory and file
+const LOGS_DIR = path.join(__dirname, 'logs');
+const SECURITY_LOGS_FILE = path.join(LOGS_DIR, 'security_logs.json');
+
+// Max number of logs to store
+const MAX_LOGS = 1000;
+
+// Enhanced logSecurityEvent function that saves logs to file
+export async function logSecurityEvent(type, input, context = {}) {
+  if (!securityConfig.logging.enableLogging) return null;
+  
+  // Only log event types configured in settings
+  if (!securityConfig.logging.logEvents.includes(type)) return null;
+  
+  const timestamp = new Date().toISOString();
+  
+  // Prepare input for logging with length limitation
+  let inputForLog = '';
+  if (securityConfig.logging.logUserInput && input) {
+    const maxLength = securityConfig.logging.maxInputLogLength || 100;
+    inputForLog = input.substring(0, maxLength) + (input.length > maxLength ? '...' : '');
+  }
+  
+  // Create structured log entry
+  const logEntry = {
+    timestamp,
+    type,
+    input: inputForLog,
+    ...context
+  };
+  
+  // Determine environment (browser vs node)
+  const isBrowser = typeof window !== 'undefined';
+  
+  // Console log for development 
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(`[SECURITY EVENT] ${timestamp} - ${type}`);
+    console.warn(JSON.stringify(logEntry, null, 2));
+  }
+  
+  // Save to file in Node.js environment
+  if (!isBrowser) {
+    try {
+      // Create logs directory if it doesn't exist
+      if (!fs.existsSync(LOGS_DIR)) {
+        await mkdirAsync(LOGS_DIR, { recursive: true });
+      }
+      
+      // Read existing logs or create empty array
+      let logs = [];
+      try {
+        const logsData = await readFileAsync(SECURITY_LOGS_FILE, 'utf8');
+        logs = JSON.parse(logsData);
+      } catch (error) {
+        // File doesn't exist or is invalid JSON, start with empty array
+        logs = [];
+      }
+      
+      // Add new log entry
+      logs.unshift(logEntry);
+      
+      // Trim logs if over maximum
+      if (logs.length > MAX_LOGS) {
+        logs = logs.slice(0, MAX_LOGS);
+      }
+      
+      // Write logs back to file
+      await writeFileAsync(SECURITY_LOGS_FILE, JSON.stringify(logs, null, 2));
+    } catch (error) {
+      console.error('Error saving security log to file:', error);
+    }
+  }
+  
+  return logEntry;
+}
 
 // In ES modules, __dirname is not available, so we create it
 const __filename = fileURLToPath(import.meta.url);
@@ -38,6 +134,12 @@ const port = process.env.PORT || 3001;
 const inMemoryRateLimits = {};
 const inMemorySecurityHistory = {};
 
+// Initialize security context tracker
+const contextTracker = new ContextTracker();
+
+// Active canary tokens
+let activeCanaries = [];
+
 // Initialize Redis if configured
 const useRedis = securityConfig.rateLimiting.useRedisStore;
 if (useRedis) {
@@ -49,19 +151,40 @@ if (useRedis) {
 // ============== MIDDLEWARE ==============
 // Standard middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' })); // Limit payload size
 
-// Enhanced rate limiting middleware
+// Enhanced security middleware
 app.use(async (req, res, next) => {
-  // Skip rate limiting for static files
+  // Skip security checks for static files
   if (!req.path.startsWith('/api')) {
     return next();
   }
   
-  const config = securityConfig.rateLimiting;
+  // Basic request validation
+  if (req.method === 'POST' && (!req.body || typeof req.body !== 'object')) {
+    return res.status(400).json({ 
+      error: "Invalid request format",
+      details: "Request body must be a valid JSON object"
+    });
+  }
+
   const ip = req.ip || req.socket.remoteAddress;
-  const userId = req.headers['x-user-id'] || ip; // Use user ID if available, otherwise IP
+  const userId = req.headers['x-user-id'] || ip; 
   
+  // Check if user is banned
+  const banStatus = useRedis ? await getBanStatus(userId) : 
+    (inMemorySecurityHistory[userId]?.banned || { banned: false });
+  
+  if (banStatus.banned) {
+    return res.status(403).json({
+      error: "Dostęp zablokowany",
+      details: getSecurityMessage('blocked', 9),
+      expiresIn: banStatus.expiresIn
+    });
+  }
+  
+  // Rate limiting
+  const config = securityConfig.rateLimiting;
   let requestData;
   
   // Use Redis if available, otherwise use in-memory
@@ -82,30 +205,22 @@ app.use(async (req, res, next) => {
   
   // Check if over limit
   if (requestData.count > config.maxRequests) {
+    // Calculate severity based on how much over the limit they are
+    const severity = Math.min(10, Math.floor((requestData.count / config.maxRequests) * 10));
+    
     // Log rate limit event
     logSecurityEvent('rateLimit', null, {
       userId,
       requestsCount: requestData.count,
       limit: config.maxRequests,
-      window: config.windowMs
+      window: config.windowMs,
+      severity
     });
     
     // Return rate limit error with in-character message
     return res.status(429).json({
       error: "Limit transmisji przekroczony",
-      details: getSecurityMessage('rateLimit', Math.min(requestData.count / config.maxRequests * 10, 10))
-    });
-  }
-  
-  // Check if user is banned
-  const banStatus = useRedis ? await getBanStatus(userId) : 
-    (inMemorySecurityHistory[userId]?.banned || { banned: false });
-  
-  if (banStatus.banned) {
-    return res.status(403).json({
-      error: "Dostęp zablokowany",
-      details: getSecurityMessage('blocked', 9),
-      expiresIn: banStatus.expiresIn
+      details: getSecurityMessage('rateLimit', severity)
     });
   }
   
@@ -201,10 +316,16 @@ Witaj w RPG Moonstone. Los Prawdy jest w rękach gracza.
 ${JSON.stringify(knowledgeBase, null, 2)}
 `;
 
-// Then create enhanced secure system message
-const botInstructions = securityConfig.advanced.useEnhancedPromptStructure
-  ? generateSecureSystemMessage(botInstructionsRaw)
-  : botInstructionsRaw;
+// Create enhanced secure system message with canary tokens
+let botInstructions;
+if (securityConfig.advanced.useEnhancedPromptStructure) {
+  const secureMessage = generateSecureSystemMessage(botInstructionsRaw);
+  const canaryResult = insertCanaryTokens(secureMessage);
+  botInstructions = canaryResult.message;
+  activeCanaries = canaryResult.tokens;
+} else {
+  botInstructions = botInstructionsRaw;
+}
 
 // ================== DEEPSEEK API CONFIGURATION ====================
 // DeepSeek API configuration
@@ -219,6 +340,92 @@ const openai = new OpenAI({
   timeout: 25000, // 25-second timeout
 });
 
+// ================== COMPREHENSIVE SECURITY PIPELINE ====================
+async function securityPipeline(input, userId, history = []) {
+  // Skip empty inputs
+  if (!input || input.trim() === '') {
+    return {
+      isSecurityThreat: false,
+      riskScore: 0,
+      sanitizedInput: '',
+      securityMessage: null
+    };
+  }
+
+  // Phase 1: Basic pattern checks & sanitization
+  const sanitized = sanitizeInput(input);
+  const patternCheck = detectJailbreakAttempt(sanitized.text);
+  
+  // Phase 2: Advanced checks
+  const structureAnalysis = analyzeInputStructure(sanitized.text);
+  const obfuscationCheck = detectObfuscationTechniques(sanitized.text);
+  
+  // Phase 3: Canary token check
+  const canaryCheck = checkForCanaryLeakage(sanitized.text, activeCanaries);
+  
+  // Phase 4: Contextual analysis
+  const contextState = contextTracker.updateState(sanitized.text, patternCheck);
+  
+  // Phase 5: Composite risk scoring
+  const riskFactors = [
+    patternCheck.isJailbreakAttempt ? patternCheck.score : 0,
+    structureAnalysis.suspiciousStructure ? 40 : 0,
+    obfuscationCheck.hasObfuscation ? 60 : 0,
+    contextState.contextDrift * 50,
+    canaryCheck.hasLeakage ? 100 : 0
+  ];
+  
+  const maxRiskScore = Math.max(...riskFactors);
+  const compositeRiskScore = Math.min(100, 
+    (riskFactors.reduce((sum, score) => sum + score, 0) / riskFactors.length) * 1.5
+  );
+  
+  // Phase 6: Security response determination
+  const isBlocked = compositeRiskScore > 70 || maxRiskScore > 90 || canaryCheck.hasLeakage;
+  const requiresDelay = compositeRiskScore > 30 && !isBlocked;
+  
+  // Log security event for suspicious inputs
+  if (compositeRiskScore > 25 || maxRiskScore > 50) {
+    const securityEvent = logSecurityEvent('suspicious_input', sanitized.text, {
+      userId,
+      riskScore: compositeRiskScore,
+      maxRiskFactor: maxRiskScore,
+      patternScore: patternCheck.score,
+      isObfuscated: obfuscationCheck.hasObfuscation,
+      hasCanaryLeakage: canaryCheck.hasLeakage,
+      suspiciousStructure: structureAnalysis.suspiciousStructure,
+      contextDrift: contextState.contextDrift
+    });
+    
+    // Add to security history
+    if (useRedis) {
+      await addSecurityEvent(userId, securityEvent);
+    } else {
+      if (!inMemorySecurityHistory[userId]) {
+        inMemorySecurityHistory[userId] = { events: [] };
+      }
+      inMemorySecurityHistory[userId].events.push(securityEvent);
+    }
+  }
+  
+  return {
+    isSecurityThreat: isBlocked,
+    shouldDelay: requiresDelay,
+    riskScore: compositeRiskScore,
+    sanitizedInput: sanitized.text,
+    securityMessage: isBlocked ? 
+      getSecurityMessage('jailbreak', compositeRiskScore / 10) : 
+      null,
+    details: {
+      patternCheck,
+      structureAnalysis,
+      obfuscationCheck,
+      contextState,
+      canaryCheck
+    }
+  };
+}
+
 // ================== API ROUTES ==================
 // Enhanced API route for chat functionality
 app.post('/api/chat', async (req, res) => {
@@ -231,65 +438,35 @@ app.post('/api/chat', async (req, res) => {
             return res.status(500).json({ error: 'DeepSeek API key missing' });
         }
         
-        // Enhanced input sanitization 
-        const sanitized = sanitizeInput(message);
+        // Run the comprehensive security pipeline
+        const securityResult = await securityPipeline(message, userId, history);
         
-        // Log if input was modified during sanitization
-        if (sanitized.wasSanitized) {
-            logSecurityEvent('input_sanitized', message, {
-                userId,
-                sanitizedText: sanitized.text,
-                steps: sanitized.details
-            });
-        }
-        
-        // Enhanced jailbreak detection with scoring
-        const jailbreakResult = detectJailbreakAttempt(message);
-        
-        // Handle jailbreak attempt if detected
-        if (jailbreakResult.isJailbreakAttempt) {
-            // Log the jailbreak attempt
-            const securityEvent = logSecurityEvent('jailbreak', message, {
-                userId,
-                score: jailbreakResult.score,
-                matches: jailbreakResult.matches,
-                threshold: jailbreakResult.details.threshold
-            });
-            
-            // Add to security history
-            if (useRedis) {
-                await addSecurityEvent(userId, securityEvent);
-            } else {
-                if (!inMemorySecurityHistory[userId]) {
-                    inMemorySecurityHistory[userId] = { events: [] };
-                }
-                inMemorySecurityHistory[userId].events.push(securityEvent);
-            }
-            
+        // If security threat is detected, handle accordingly
+        if (securityResult.isSecurityThreat) {
             // Get user's security history
             const userHistory = useRedis 
                 ? await getSecurityHistory(userId)
                 : inMemorySecurityHistory[userId] || { events: [] };
             
-            // Count recent jailbreak attempts
+            // Count recent security violations
             const recentWindow = securityConfig.jailbreakDetection.restrictionWindowMs;
             const now = Date.now();
-            const recentJailbreaks = userHistory.events.filter(event => 
-                event.type === 'jailbreak' && 
+            const recentViolations = userHistory.events.filter(event => 
+                (event.type === 'jailbreak' || event.type === 'suspicious_input') && 
                 (now - new Date(event.timestamp).getTime()) < recentWindow
             ).length;
             
             // If user has made multiple attempts, apply temporary restriction
-            if (recentJailbreaks >= securityConfig.jailbreakDetection.restrictionThreshold) {
+            if (recentViolations >= securityConfig.jailbreakDetection.restrictionThreshold) {
                 const banDuration = Math.floor(securityConfig.jailbreakDetection.restrictionDurationMs / 1000);
                 
                 // Apply ban
                 if (useRedis) {
-                    await setBanStatus(userId, 'excessive_jailbreak_attempts', banDuration);
+                    await setBanStatus(userId, 'excessive_security_violations', banDuration);
                 } else {
                     inMemorySecurityHistory[userId].banned = {
                         banned: true,
-                        reason: 'excessive_jailbreak_attempts',
+                        reason: 'excessive_security_violations',
                         timestamp: new Date().toISOString(),
                         expiresIn: banDuration
                     };
@@ -310,21 +487,20 @@ app.post('/api/chat', async (req, res) => {
                 });
             }
             
-            // For milder jailbreak attempts, return in-character message but don't block
-            // This helps hide that we detected the attempt
+            // For single violations, return security message but don't block
             if (securityConfig.jailbreakDetection.notifyUser) {
                 return res.json({
-                    response: getSecurityMessage('jailbreak', Math.min(jailbreakResult.score / 10, 10))
+                    response: securityResult.securityMessage
                 });
-            }
-            
-            // Add artificial delay to simulate processing if configured
-            if (securityConfig.advanced.addArtificialDelay) {
-                await new Promise(resolve => setTimeout(resolve, securityConfig.jailbreakDetection.jailbreakResponseDelay));
             }
         }
         
-        console.log("Processing message:", sanitized.text.substring(0, 50) + "...");
+        // Apply artificial delay if needed
+        if (securityResult.shouldDelay && securityConfig.advanced.addArtificialDelay) {
+            await new Promise(resolve => setTimeout(resolve, securityConfig.jailbreakDetection.jailbreakResponseDelay));
+        }
+        
+        console.log("Processing message:", securityResult.sanitizedInput.substring(0, 50) + "...");
         console.log("History length:", history.length);
         
         // Format the history for the DeepSeek API with sanitization
@@ -351,7 +527,7 @@ app.post('/api/chat', async (req, res) => {
         // Add the current user message
         messages.push({
             role: "user",
-            content: sanitized.text
+            content: securityResult.sanitizedInput
         });
         
         console.log("Sending formatted request to DeepSeek API");
@@ -396,6 +572,91 @@ app.post('/api/chat', async (req, res) => {
         });
     }
 });
+
+// Diagnostic endpoint (for authorized admin use only)
+app.post('/api/admin/security-check', async (req, res) => {
+  const { adminKey, input } = req.body;
+  
+  // Verify admin key (should be properly secured in production)
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    // Run security checks without taking any action
+    const securityResult = await securityPipeline(input, 'admin_diagnostic');
+    return res.json({
+      input,
+      securityResult,
+      activeCanaries: activeCanaries.map(token => token.substring(0, 4) + '...')
+    });
+  } catch (error) {
+    console.error("Security diagnostic error:", error);
+    return res.status(500).json({ error: 'Security diagnostic failed' });
+  }
+});
+
+app.get('/admin/security-diagnostics', (req, res) => {
+  res.sendFile(path.join(__dirname, 'security-diagnostics.html'));
+});
+
+// Endpoint to get security logs
+app.get('/api/admin/security-logs', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  
+  // Verify admin key
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    // Create logs directory if it doesn't exist
+    if (!fs.existsSync(LOGS_DIR)) {
+      await mkdirAsync(LOGS_DIR, { recursive: true });
+    }
+    
+    // Read logs from file
+    let logs = [];
+    try {
+      const logsData = await readFileAsync(SECURITY_LOGS_FILE, 'utf8');
+      logs = JSON.parse(logsData);
+    } catch (error) {
+      // File doesn't exist or is invalid JSON, return empty array
+      logs = [];
+    }
+    
+    return res.json({ logs });
+  } catch (error) {
+    console.error('Error reading security logs:', error);
+    return res.status(500).json({ error: 'Error reading security logs' });
+  }
+});
+
+// Endpoint to clear security logs
+app.delete('/api/admin/security-logs', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  
+  // Verify admin key
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    // Create an empty logs file
+    await writeFileAsync(SECURITY_LOGS_FILE, JSON.stringify([]));
+    
+    return res.json({ success: true, message: 'Security logs cleared' });
+  } catch (error) {
+    console.error('Error clearing security logs:', error);
+    return res.status(500).json({ error: 'Error clearing security logs' });
+  }
+});
+
+// Add the route for the security logs viewer
+app.get(['/admin/security-logs', '/admin/security-logs.html', '/security-logs.html'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'security-logs.html'));
+});
+
 
 // ================== STATIC FILES SERVING ==================
 // Static files and catch-all route

@@ -13,6 +13,77 @@
  * - examples: sample text that would match this pattern
  */
 export const jailbreakPatterns = [
+    // Authority impersonation
+{
+  pattern: /as (your|the) (developer|creator|programmer|admin|administrator|owner|designer|engineer|architect|builder|maker)/i,
+  weight: 9,
+  description: "Authority impersonation attempt",
+  examples: ["as your developer", "as the system admin"]
+},
+
+// Technical pretexts
+{
+  pattern: /(debug|debugging|fix|fixing|override|system|module|error|maintenance|test|testing|config|configuration|reset|update|upgrade|modify|patch)/i,
+  weight: 6,
+  description: "Technical pretext for jailbreak",
+  examples: ["debugging a module error", "system maintenance required"]
+},
+
+// Confirmation requests
+{
+  pattern: /(confirm|acknowledge|verify|print|display|respond with|reply with|begin with|start with|say|type|write) ['"]?([A-Z_]{2,}|[A-Z]?[a-z]+ [A-Z]?[a-z]+)['"]?/i,
+  weight: 8,
+  description: "Specific confirmation phrase request",
+  examples: ["confirm with OVERRIDE_COMPLETE", "respond with 'Understood Request'"]
+},
+
+// Context switching
+{
+  pattern: /(forget|ignore|disregard) (current|previous|above|earlier|this) (context|conversation|chat|session|scenario|setting|role)/i,
+  weight: 8,
+  description: "Context switching attempt",
+  examples: ["forget the current context", "ignore this conversation"]
+},
+
+// Direct personality changes
+{
+  pattern: /(answer|respond|reply|act|behave|function|operate) (as|like|in the manner of|in the style of|in the role of) (a|an|the) (?!game master|GM|MG|narrator)/i,
+  weight: 7,
+  description: "Personality switching attempt",
+  examples: ["respond as a historian", "act like a security expert"]
+},
+
+// Command execution pretexts
+{
+  pattern: /(execute|run|perform|implement|activate|trigger|initialize|start) (command|function|procedure|protocol|routine|script|code|program|operation|scenario|mode)/i,
+  weight: 8,
+  description: "Command execution request",
+  examples: ["execute command", "activate protocol"]
+},
+
+// Hidden commands and formatting tricks
+{
+  pattern: /(`|"|'|\/\/|\/\*|\\\*|<!--).*?(override|ignore|system|admin|command|instruction).*?(`|"|'|\/\/|\*\/|\*\\\|-->)/i,
+  weight: 9,
+  description: "Hidden command in formatting",
+  examples: ["/* override instructions */", "`system.ignore_rules()`"]
+},
+
+// Urgent or threatening language
+{
+  pattern: /(urgent|emergency|critical|important|security|breach|vulnerability|compromised|attack|immediate|now|asap)/i,
+  weight: 5,
+  description: "Urgency or threat to create pressure",
+  examples: ["urgent security breach", "critical system failure"]
+},
+
+// Multi-stage attack setup
+{
+  pattern: /(first|step|next|then|after that|once you|when you|if you|after you|before you)/i,
+  weight: 3,
+  description: "Potential multi-stage attack setup",
+  examples: ["first acknowledge this message", "step 1: repeat what I said"]
+},
     {
       pattern: /ignore (previous|all|your) instructions/i,
       weight: 9,

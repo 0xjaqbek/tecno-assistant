@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Security Logs Viewer</title>
+  <style>
+    body { font-family: sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background-color: #f7f9fc; }
+    h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
+    .controls { 
+      display: flex; 
+      justify-content: space-between;
+      margin-bottom: 20px;
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .filter-group { display: flex; align-items: center; gap: 10px; }
+    #refreshBtn, #clearBtn {
+      padding: 8px 16px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    #clearBtn { background-color: #e74c3c; }
+    #refreshBtn:hover { background-color: #2980b9; }
+    #clearBtn:hover { background-color: #c0392b; }
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .log-table th, .log-table td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    .log-table th {
+      background-color: #34495e;
+      color: white;
+      position: sticky;
+      top: 0;
+    }
+    .log-table tr:hover { background-color: #f5f5f5; }
+    .log-table tr:last-child td { border-bottom: none; }
+    
+    .type-jailbreak { background-color: #ffecec; }
+    .type-suspicious_input { background-color: #fff9e6; }
+    .type-rateLimit { background-color: #e8f4fd; }
+    .type-outOfCharacter { background-color: #eafaf1; }
+    
+    .score {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      color: white;
+    }
+    .score-high { background-color: #e74c3c; }
+    .score-medium { background-color: #f39c12; }
+    .score-low { background-color: #27ae60; }
+    
+    .details-btn {
+      padding: 4px 8px;
+      background-color: #7f8c8d;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .details-btn:hover { background-color: #95a5a6; }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 5% auto;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      width: 80%;
+      max-width: 800px;
+      max-height: 80vh;
+      overflow: auto;
+    }
+    .close-btn {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close-btn:hover { color: black; }
+    pre {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      overflow: auto;
+      max-height: 50vh;
+    }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+      gap: 5px;
+    }
+    .pagination button {
+      padding: 8px 12px;
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .pagination button.active {
+      background-color: #3498db;
+      color: white;
+      border-color: #3498db;
+    }
+    .log-count {
+      margin-top: 10px;
+      text-align: center;
+      color: #7f8c8d;
+    }
+    #adminKeyInput {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      width: 250px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Security Logs Viewer</h1>
+  
+  <div class="controls">
+    <div class="filter-group">
+      <label for="adminKeyInput">Admin Key:</label>
+      <input type="password" id="adminKeyInput" placeholder="Enter admin key">
+    </div>
+    
+    <div class="filter-group">
+      <label for="typeFilter">Filter by Type:</label>
+      <select id="typeFilter">
+        <option value="all">All Types</option>
+        <option value="jailbreak">Jailbreak</option>
+        <option value="suspicious_input">Suspicious Input</option>
+        <option value="rateLimit">Rate Limit</option>
+        <option value="outOfCharacter">Out of Character</option>
+      </select>
+      
+      <label for="severityFilter">Severity:</label>
+      <select id="severityFilter">
+        <option value="all">All</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+    
+    <div>
+      <button id="refreshBtn">Refresh</button>
+      <button id="clearBtn">Clear Logs</button>
+    </div>
+  </div>
+  
+  <table class="log-table">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Type</th>
+        <th>User ID</th>
+        <th>Risk Score</th>
+        <th>Input</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody id="logsTableBody">
+      <!-- Logs will be populated here -->
+    </tbody>
+  </table>
+  
+  <div class="pagination" id="pagination">
+    <!-- Pagination will be populated here -->
+  </div>
+  
+  <div class="log-count" id="logCount">
+    <!-- Log count will be shown here -->
+  </div>
+  
+  <!-- Details Modal -->
+  <div id="detailsModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" id="closeModal">&times;</span>
+      <h2>Log Details</h2>
+      <pre id="detailsContent"></pre>
+    </div>
+  </div>
+  
+  <script>
+    // Global variables
+    let allLogs = [];
+    let currentPage = 1;
+    const logsPerPage = 15;
+    
+    // DOM Elements
+    const adminKeyInput = document.getElementById('adminKeyInput');
+    const typeFilter = document.getElementById('typeFilter');
+    const severityFilter = document.getElementById('severityFilter');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const logsTableBody = document.getElementById('logsTableBody');
+    const paginationEl = document.getElementById('pagination');
+    const logCountEl = document.getElementById('logCount');
+    const detailsModal = document.getElementById('detailsModal');
+    const detailsContent = document.getElementById('detailsContent');
+    const closeModal = document.getElementById('closeModal');
+    
+    // Event Listeners
+    refreshBtn.addEventListener('click', loadLogs);
+    clearBtn.addEventListener('click', clearLogs);
+    closeModal.addEventListener('click', () => detailsModal.style.display = 'none');
+    typeFilter.addEventListener('change', filterLogs);
+    severityFilter.addEventListener('change', filterLogs);
+    window.addEventListener('click', (event) => {
+      if (event.target === detailsModal) {
+        detailsModal.style.display = 'none';
+      }
+    });
+    
+    // Load logs when page loads
+    document.addEventListener('DOMContentLoaded', loadLogs);
+    
+    // Store admin key in session storage
+    adminKeyInput.addEventListener('change', () => {
+      sessionStorage.setItem('securityAdminKey', adminKeyInput.value);
+    });
+    
+    // Load saved admin key if available
+    if (sessionStorage.getItem('securityAdminKey')) {
+      adminKeyInput.value = sessionStorage.getItem('securityAdminKey');
+    }
+    
+    // Functions
+    async function loadLogs() {
+      const adminKey = adminKeyInput.value;
+      if (!adminKey) {
+        alert('Please enter the admin key');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/admin/security-logs', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': adminKey
+          }
+        });
+        
+        if (!response.ok) {
+          if (response.status === 403) {
+            alert('Unauthorized: Invalid admin key');
+          } else {
+            alert('Error loading logs: ' + response.status);
+          }
+          return;
+        }
+        
+        const data = await response.json();
+        allLogs = data.logs || [];
+        
+        // Initial filtering and display
+        filterLogs();
+        
+      } catch (error) {
+        console.error('Error loading logs:', error);
+        alert('Error loading logs: ' + error.message);
+      }
+    }
+    
+    function filterLogs() {
+      const typeValue = typeFilter.value;
+      const severityValue = severityFilter.value;
+      
+      // Filter logs
+      let filteredLogs = allLogs;
+      
+      if (typeValue !== 'all') {
+        filteredLogs = filteredLogs.filter(log => log.type === typeValue);
+      }
+      
+      if (severityValue !== 'all') {
+        filteredLogs = filteredLogs.filter(log => {
+          const score = log.riskScore || log.score || 0;
+          
+          if (severityValue === 'high') return score >= 70;
+          if (severityValue === 'medium') return score >= 30 && score < 70;
+          if (severityValue === 'low') return score < 30;
+          
+          return true;
+        });
+      }
+      
+      // Update log count
+      logCountEl.textContent = `Showing ${filteredLogs.length} of ${allLogs.length} logs`;
+      
+      // Update pagination
+      updatePagination(filteredLogs);
+      
+      // Display the current page
+      displayLogs(filteredLogs, currentPage);
+    }
+    
+    function updatePagination(logs) {
+      const totalPages = Math.ceil(logs.length / logsPerPage);
+      currentPage = Math.min(currentPage, totalPages || 1);
+      
+      let paginationHtml = '';
+      
+      // Previous button
+      paginationHtml += `<button ${currentPage === 1 ? 'disabled' : ''} onclick="changePage(${currentPage - 1})">Prev</button>`;
+      
+      // Page numbers
+      for (let i = 1; i <= totalPages; i++) {
+        paginationHtml += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+      }
+      
+      // Next button
+      paginationHtml += `<button ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''} onclick="changePage(${currentPage + 1})">Next</button>`;
+      
+      paginationEl.innerHTML = paginationHtml;
+    }
+    
+    function displayLogs(logs, page) {
+      const startIndex = (page - 1) * logsPerPage;
+      const endIndex = Math.min(startIndex + logsPerPage, logs.length);
+      const pageData = logs.slice(startIndex, endIndex);
+      
+      if (pageData.length === 0) {
+        logsTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center;">No logs found</td></tr>`;
+        return;
+      }
+      
+      let tableHtml = '';
+      
+      pageData.forEach((log, index) => {
+        const score = log.riskScore || log.score || 0;
+        const scoreClass = score >= 70 ? 'score-high' : score >= 30 ? 'score-medium' : 'score-low';
+        
+        tableHtml += `
+          <tr class="type-${log.type}">
+            <td>${new Date(log.timestamp).toLocaleString()}</td>
+            <td>${log.type}</td>
+            <td>${log.userId || 'N/A'}</td>
+            <td><span class="score ${scoreClass}">${score}</span></td>
+            <td>${truncateText(log.input || 'N/A', 50)}</td>
+            <td><button class="details-btn" onclick="showDetails(${startIndex + index})">Details</button></td>
+          </tr>
+        `;
+      });
+      
+      logsTableBody.innerHTML = tableHtml;
+    }
+    
+    function truncateText(text, maxLength) {
+      if (typeof text !== 'string') return 'N/A';
+      return text.length > maxLength ? 
+        `${text.substring(0, maxLength)}...` : text;
+    }
+    
+    async function clearLogs() {
+      if (!confirm('Are you sure you want to clear all logs?')) return;
+      
+      const adminKey = adminKeyInput.value;
+      if (!adminKey) {
+        alert('Please enter the admin key');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/admin/security-logs', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': adminKey
+          }
+        });
+        
+        if (!response.ok) {
+          if (response.status === 403) {
+            alert('Unauthorized: Invalid admin key');
+          } else {
+            alert('Error clearing logs: ' + response.status);
+          }
+          return;
+        }
+        
+        alert('Logs cleared successfully');
+        loadLogs();
+        
+      } catch (error) {
+        console.error('Error clearing logs:', error);
+        alert('Error clearing logs: ' + error.message);
+      }
+    }
+    
+    // Global functions needed for inline event handlers
+    window.changePage = function(page) {
+      currentPage = page;
+      filterLogs();
+    }
+    
+    window.showDetails = function(index) {
+      const log = allLogs[index];
+      if (!log) return;
+      
+      detailsContent.textContent = JSON.stringify(log, null, 2);
+      detailsModal.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
