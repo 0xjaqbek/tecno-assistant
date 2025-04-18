@@ -18,7 +18,7 @@ router.get(['/admin/conversations', '/admin/conversations.html', '/conversations
   res.sendFile(path.join(__dirname, '..', 'conversations.html'));
 });
 
-router.get('/admin/security-diagnostics', (req, res) => {
+router.get('/admin/security-diagnostics', '/admin/security-diagnostics.html', '/security-diagnostics.html', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'security-diagnostics.html'));
 });
 
