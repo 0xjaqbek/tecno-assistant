@@ -54,7 +54,7 @@ const SECURITY_LOGS_FILE = path.join(LOGS_DIR, 'security_logs.json');
 const MAX_LOGS = 1000;
 
 // Enhanced logSecurityEvent function that saves logs to file
-export async function logSecurityEvent(type, input, context = {}) {
+export async function enhancedLogSecurityEvent(type, input, context = {}) {
   if (!securityConfig.logging.enableLogging) return null;
   
   // Only log event types configured in settings
