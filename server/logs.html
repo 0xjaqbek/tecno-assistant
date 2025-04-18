@@ -143,10 +143,12 @@
             
             try {
                 const response = await fetch('/api/admin/test-security-log', {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'x-admin-key': adminKey
-                    }
+                    },
+                    body: JSON.stringify({})
                 });
                 
                 const data = await response.json();
