@@ -771,6 +771,13 @@ app.get("*", (req, res) => {
 
 // Add test endpoint for file writing
 app.get('/api/test-file-write', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  
+  // Verify admin key
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
   try {
     console.log('Test file write endpoint called');
     
