@@ -28,7 +28,7 @@ import {
   detectJailbreakAttempt,
   filterBotResponse,
   getSecurityMessage,
-  logSecurityEvent,
+  logSecurityEventOld,
   generateSecureSystemMessage
 } from './client/src/security/utils.js';
 
@@ -264,7 +264,7 @@ app.use(async (req, res, next) => {
     const severity = Math.min(10, Math.floor((requestData.count / config.maxRequests) * 10));
     
     // Log rate limit event
-    logSecurityEvent('rateLimit', null, {
+    logSecurityEventOld('rateLimit', null, {
       userId,
       requestsCount: requestData.count,
       limit: config.maxRequests,

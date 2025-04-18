@@ -255,7 +255,7 @@ import {
      * @param {object} context - Additional context information
      * @returns {object} Structured log entry
      */
-    export function logSecurityEvent(type, input, context = {}) {
+    export function logSecurityEventOld(type, input, context = {}) {
       if (!securityConfig.logging.enableLogging) return null;
       
       // Only log event types configured in settings

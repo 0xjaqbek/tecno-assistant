@@ -116,7 +116,7 @@ export function sanitizeInput(input) {
    * @param {string} input - User input that triggered the event
    * @param {object} context - Additional context information
    */
-  export function logSecurityEvent(type, input, context = {}) {
+  export function logSecurityEventOld(type, input, context = {}) {
     const timestamp = new Date().toISOString();
     const logEntry = {
       timestamp,
