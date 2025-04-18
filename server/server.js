@@ -7,6 +7,16 @@ import OpenAI from 'openai';
 import fs from 'fs';
 import { promisify } from 'util';
 
+// Path to the log file
+const logFilePath = path.join(process.cwd(), 'server', 'security.log');
+
+// Log helper
+export function logSecurityEvent(event) {
+  const timestamp = new Date().toISOString();
+  const message = `[${timestamp}] ${event}\n`;
+  fs.appendFileSync(logFilePath, message, 'utf8');
+}
+
 // In ES modules, __dirname is not available, so we create it
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -765,6 +775,30 @@ app.get(['/admin/security-logs', '/admin/security-logs.html', '/security-logs.ht
 
 
 // ================== STATIC FILES SERVING ==================
+
+// Fetch logs
+app.get('/api/admin/security-logs', (req, res) => {
+  try {
+    const logs = fs.existsSync(logFilePath)
+      ? fs.readFileSync(logFilePath, 'utf8')
+      : '';
+    const logEntries = logs.trim().split('\n').filter(Boolean);
+    res.json({ logs: logEntries });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read logs' });
+  }
+});
+
+// Clear logs
+app.post('/api/admin/clear-logs', (req, res) => {
+  try {
+    fs.writeFileSync(logFilePath, '', 'utf8');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear logs' });
+  }
+});
+
 
 // Static files and catch-all route
 app.use(express.static(path.join(__dirname, "./dist")));

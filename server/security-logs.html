@@ -173,7 +173,7 @@
     
     <div>
       <button id="refreshBtn">Refresh</button>
-      <button id="clearBtn">Clear Logs</button>
+      <button id="clearLogsBtn">Clear Logs</button>
     </div>
   </div>
   
@@ -382,41 +382,38 @@
         `${text.substring(0, maxLength)}...` : text;
     }
     
-    async function clearLogs() {
-      if (!confirm('Are you sure you want to clear all logs?')) return;
-      
-      const adminKey = adminKeyInput.value;
+
+    document.getElementById('clearLogsBtn').addEventListener('click', async () => {
+      const adminKey = document.getElementById('adminKey').value;
       if (!adminKey) {
-        alert('Please enter the admin key');
+        showError('logsResult', 'Admin key is required to clear logs.');
         return;
       }
-      
+
+      if (!confirm('Are you sure you want to permanently clear all logs?')) return;
+
+      showLoading('logsResult');
+
       try {
         const response = await fetch('/api/admin/security-logs', {
           method: 'DELETE',
           headers: {
-            'Content-Type': 'application/json',
-            'X-Admin-Key': adminKey
+            'x-admin-key': adminKey
           }
         });
-        
-        if (!response.ok) {
-          if (response.status === 403) {
-            alert('Unauthorized: Invalid admin key');
-          } else {
-            alert('Error clearing logs: ' + response.status);
-          }
-          return;
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          showSuccess('logsResult', '✅ Security logs cleared successfully.');
+        } else {
+          showError('logsResult', `❌ Error: ${data.error || 'Unknown issue'}`);
         }
-        
-        alert('Logs cleared successfully');
-        loadLogs();
-        
-      } catch (error) {
-        console.error('Error clearing logs:', error);
-        alert('Error clearing logs: ' + error.message);
+      } catch (err) {
+        showError('logsResult', `❌ Network error: ${err.message}`);
       }
-    }
+    });
+
     
     // Global functions needed for inline event handlers
     window.changePage = function(page) {
