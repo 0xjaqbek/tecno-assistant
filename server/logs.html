@@ -207,10 +207,11 @@
             
             try {
                 const response = await fetch('/api/admin/security-logs', {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-admin-key': adminKey
-                    }
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-admin-key': adminKey
+                }
                 });
                 
                 const data = await response.json();
@@ -243,11 +244,13 @@
                 }
                 
                 const response = await fetch('/api/test-file-write', {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'x-admin-key': adminKey
-                    }
-                });
+                    },
+                    body: JSON.stringify({})
+                    });
                 
                 const data = await response.json();
                 
