@@ -798,7 +798,7 @@ app.get('/api/test-file-write', async (req, res) => {
 });
 
 app.get(['/logs', '/logs.htm', '/logs.html'], (req, res) => {
-  const filePath = path.join(__dirname, 'logs.htm');
+  const filePath = path.join(__dirname, 'logs.html');
   console.log('Attempting to serve logs troubleshooter from:', filePath);
   
   // Check if file exists
