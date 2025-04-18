@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Logs Troubleshooter</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .logs {
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 2s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Security Logs Troubleshooter</h1>
+        <p>Use this tool to verify your security logging system is working correctly.</p>
+    </div>
+
+    <div class="card">
+        <h2>Test Log Generation</h2>
+        <p>Generate a test security log entry to verify the system can write logs.</p>
+        
+        <div>
+            <label for="adminKey">Admin Key:</label>
+            <input type="password" id="adminKey" placeholder="Enter your admin API key">
+        </div>
+        <br>
+        <button id="testLogBtn">Generate Test Log</button>
+        <button id="checkFileWriteBtn">Test File Writing</button>
+        <div id="testResult"></div>
+    </div>
+    
+    <div class="card">
+        <h2>View Security Logs</h2>
+        <p>Fetch and display current security logs.</p>
+        <button id="viewLogsBtn">View Logs</button>
+        <div id="logsResult" class="logs"></div>
+    </div>
+    
+    <div class="card">
+        <h2>System Information</h2>
+        <div id="sysInfo"></div>
+        <button id="checkPathsBtn">Check File Paths</button>
+        <div id="pathsResult"></div>
+    </div>
+
+    <script>
+        // Helper to show loading state
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = '<div class="loader"></div> Loading...';
+        }
+
+        // Helper to show error messages
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // Helper to show success messages
+        function showSuccess(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="success">${message}</div>`;
+        }
+
+        // Test log generation
+        document.getElementById('testLogBtn').addEventListener('click', async () => {
+            const adminKey = document.getElementById('adminKey').value;
+            if (!adminKey) {
+                showError('testResult', 'Admin key is required');
+                return;
+            }
+
+            showLoading('testResult');
+            
+            try {
+                const response = await fetch('/api/admin/test-security-log', {
+                    headers: {
+                        'x-admin-key': adminKey
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('testResult', 'Test log generated successfully!');
+                    document.getElementById('testResult').innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    showError('testResult', `Error: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showError('testResult', `Network error: ${error.message}`);
+            }
+        });
+
+        // Test file writing
+        document.getElementById('checkFileWriteBtn').addEventListener('click', async () => {
+            const adminKey = document.getElementById('adminKey').value;
+            if (!adminKey) {
+                showError('testResult', 'Admin key is required');
+                return;
+            }
+
+            showLoading('testResult');
+            
+            try {
+                const response = await fetch('/api/test-file-write', {
+                    headers: {
+                        'x-admin-key': adminKey
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('testResult', 'File write test successful!');
+                    document.getElementById('testResult').innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    showError('testResult', `Error: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showError('testResult', `Network error: ${error.message}`);
+            }
+        });
+
+        // View logs
+        document.getElementById('viewLogsBtn').addEventListener('click', async () => {
+            const adminKey = document.getElementById('adminKey').value;
+            if (!adminKey) {
+                showError('logsResult', 'Admin key is required');
+                return;
+            }
+
+            showLoading('logsResult');
+            
+            try {
+                const response = await fetch('/api/admin/security-logs', {
+                    headers: {
+                        'x-admin-key': adminKey
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (data.logs && data.logs.length > 0) {
+                        showSuccess('logsResult', `Found ${data.logs.length} log entries:`);
+                        document.getElementById('logsResult').innerHTML += `<pre>${JSON.stringify(data.logs, null, 2)}</pre>`;
+                    } else {
+                        document.getElementById('logsResult').innerHTML = '<div class="warning">No logs found. Try generating a test log first.</div>';
+                    }
+                } else {
+                    showError('logsResult', `Error: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showError('logsResult', `Network error: ${error.message}`);
+            }
+        });
+
+        // Check file paths
+        document.getElementById('checkPathsBtn').addEventListener('click', async () => {
+            showLoading('pathsResult');
+            
+            try {
+                // We don't have a direct endpoint for this, so we'll use the test file write endpoint
+                const adminKey = document.getElementById('adminKey').value;
+                if (!adminKey) {
+                    showError('pathsResult', 'Admin key is required');
+                    return;
+                }
+                
+                const response = await fetch('/api/test-file-write', {
+                    headers: {
+                        'x-admin-key': adminKey
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('pathsResult', 'File paths appear to be working correctly!');
+                    document.getElementById('pathsResult').innerHTML += `
+                        <p>File path information:</p>
+                        <pre>${JSON.stringify({
+                            filePath: data.filePath,
+                            directoryPath: data.filePath.substring(0, data.filePath.lastIndexOf('/')),
+                            success: data.success
+                        }, null, 2)}</pre>
+                    `;
+                } else {
+                    showError('pathsResult', `Error: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showError('pathsResult', `Network error: ${error.message}`);
+            }
+        });
+
+        // Display system info on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const sysInfo = document.getElementById('sysInfo');
+            sysInfo.innerHTML = `
+                <p><strong>Browser Information:</strong> ${navigator.userAgent}</p>
+                <p><strong>Current URL:</strong> ${window.location.href}</p>
+                <p><strong>JavaScript Enabled:</strong> Yes</p>
+            `;
+        });
+    </script>
+</body>
+</html>

@@ -61,6 +61,13 @@ const MAX_LOGS = 1000;
 export async function enhancedLogSecurityEvent(type, input, context = {}) {
   console.log(`[LOG ATTEMPT] Attempting to log security event of type: ${type}`);
   
+  // Debug info about configuration
+  console.log('[LOG CONFIG]', {
+    loggingEnabled: securityConfig.logging.enableLogging,
+    logEvents: securityConfig.logging.logEvents,
+    logEventIncluded: securityConfig.logging.logEvents.includes(type)
+  });
+  
   if (!securityConfig.logging.enableLogging) {
     console.log('[LOG SKIPPED] Logging is disabled in security config');
     return null;
@@ -784,6 +791,53 @@ app.get('/api/test-file-write', async (req, res) => {
     console.error('Error writing test file:', error);
     return res.status(500).json({ 
       error: 'Error writing test file', 
+      details: error.message,
+      stack: error.stack
+    });
+  }
+});
+
+app.get('/api/admin/test-security-log', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  
+  // Verify admin key
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    console.log('Test security log endpoint called');
+    
+    // Create a test security event
+    const testEvent = await enhancedLogSecurityEvent('test_event', 'This is a test security event', {
+      userId: 'admin_test',
+      testId: Math.random().toString(36).substring(2, 15),
+      timestamp: new Date().toISOString()
+    });
+    
+    // Test if file writing works too
+    const testFilePath = path.join(LOGS_DIR, 'test_log_event.json');
+    const testData = { 
+      test: 'data', 
+      timestamp: new Date().toISOString(),
+      randomId: Math.random().toString(36).substring(2, 15)
+    };
+    
+    await writeFileAsync(testFilePath, JSON.stringify(testData, null, 2));
+    
+    return res.json({
+      success: true,
+      message: 'Test security event logged successfully',
+      eventData: testEvent,
+      fileTest: {
+        path: testFilePath,
+        data: testData
+      }
+    });
+  } catch (error) {
+    console.error('Error in test security log endpoint:', error);
+    return res.status(500).json({
+      error: 'Error generating test security log',
       details: error.message,
       stack: error.stack
     });
