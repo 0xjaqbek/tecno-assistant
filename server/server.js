@@ -7,6 +7,10 @@ import OpenAI from 'openai';
 import fs from 'fs';
 import { promisify } from 'util';
 
+// In ES modules, __dirname is not available, so we create it
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Import enhanced security modules with corrected paths
 import securityConfig from './client/src/security/config.js';
 import {
@@ -121,10 +125,6 @@ export async function enhancedLogSecurityEvent(type, input, context = {}) {
   
   return logEntry;
 }
-
-// In ES modules, __dirname is not available, so we create it
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 dotenv.config();
 const app = express();
