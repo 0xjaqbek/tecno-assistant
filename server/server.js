@@ -84,9 +84,8 @@ export async function enhancedLogSecurityEvent(type, input, context = {}) {
   
   // Prepare input for logging with length limitation
   let inputForLog = '';
-  if (securityConfig.logging.logUserInput && input) {
-    const maxLength = securityConfig.logging.maxInputLogLength || 100;
-    inputForLog = input.substring(0, maxLength) + (input.length > maxLength ? '...' : '');
+    if (securityConfig.logging.logUserInput && input) {
+      inputForLog = input;
     console.log(`[LOG INFO] Input truncated to ${inputForLog.length} characters`);
   }
   

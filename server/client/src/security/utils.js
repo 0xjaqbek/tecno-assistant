@@ -266,8 +266,7 @@ import {
       // Prepare input for logging with length limitation
       let inputForLog = '';
       if (securityConfig.logging.logUserInput && input) {
-        const maxLength = securityConfig.logging.maxInputLogLength || 100;
-        inputForLog = input.substring(0, maxLength) + (input.length > maxLength ? '...' : '');
+        inputForLog = input; // log full input without truncation
       }
       
       // Create structured log entry
