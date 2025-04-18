@@ -5,6 +5,25 @@
   <style>
     body { font-family: sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background-color: #f7f9fc; }
     h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ddd;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      background-color: #f1f1f1;
+      border: 1px solid #ddd;
+      border-bottom: none;
+      border-radius: 5px 5px 0 0;
+      margin-right: 5px;
+    }
+    .tab.active {
+      background-color: #3498db;
+      color: white;
+      border-color: #3498db;
+    }
     .controls { 
       display: flex; 
       justify-content: space-between;
@@ -15,7 +34,7 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .filter-group { display: flex; align-items: center; gap: 10px; }
-    #refreshBtn, #clearBtn {
+    #refreshBtn, #clearBtn, #clearLogsBtn {
       padding: 8px 16px;
       background-color: #3498db;
       color: white;
@@ -24,9 +43,9 @@
       cursor: pointer;
       transition: background-color 0.3s;
     }
-    #clearBtn { background-color: #e74c3c; }
+    #clearBtn, #clearLogsBtn { background-color: #e74c3c; }
     #refreshBtn:hover { background-color: #2980b9; }
-    #clearBtn:hover { background-color: #c0392b; }
+    #clearBtn:hover, #clearLogsBtn:hover { background-color: #c0392b; }
     .log-table {
       width: 100%;
       border-collapse: collapse;
@@ -144,7 +163,12 @@
   </style>
 </head>
 <body>
-  <h1>Security Logs Viewer</h1>
+  <h1>Admin Portal</h1>
+  
+  <div class="tabs">
+    <div id="securityLogsTab" class="tab active">Security Logs</div>
+    <div id="conversationsTab" class="tab">Conversations</div>
+  </div>
   
   <div class="controls">
     <div class="filter-group">
@@ -229,6 +253,8 @@
     const detailsModal = document.getElementById('detailsModal');
     const detailsContent = document.getElementById('detailsContent');
     const closeModal = document.getElementById('closeModal');
+    const securityLogsTab = document.getElementById('securityLogsTab');
+    const conversationsTab = document.getElementById('conversationsTab');
     
     // Event Listeners
     refreshBtn.addEventListener('click', loadLogs);
@@ -236,6 +262,10 @@
     closeModal.addEventListener('click', () => detailsModal.style.display = 'none');
     typeFilter.addEventListener('change', filterLogs);
     severityFilter.addEventListener('change', filterLogs);
+    
+    // Tab navigation
+    conversationsTab.addEventListener('click', () => window.location.href = '/admin/conversations');
+    
     window.addEventListener('click', (event) => {
       if (event.target === detailsModal) {
         detailsModal.style.display = 'none';
@@ -435,36 +465,34 @@
   </script>
   <script>
     document.getElementById('clearLogsBtn').addEventListener('click', async () => {
-      const adminKey = document.getElementById('adminKey').value;
+      const adminKey = adminKeyInput.value;
       if (!adminKey) {
-        showError('logsResult', 'Admin key is required to clear logs.');
+        alert('Admin key is required to clear logs.');
         return;
       }
   
       if (!confirm('Are you sure you want to permanently clear all logs?')) return;
   
-      showLoading('logsResult');
-  
       try {
         const response = await fetch('/api/admin/security-logs', {
           method: 'DELETE',
           headers: {
-            'x-admin-key': adminKey
+            'X-Admin-Key': adminKey
           }
         });
   
         const data = await response.json();
   
         if (response.ok && data.success) {
-          showSuccess('logsResult', '✅ Security logs cleared successfully.');
+          alert('Security logs cleared successfully.');
+          loadLogs();
         } else {
-          showError('logsResult', `❌ Error: ${data.error || 'Unknown issue'}`);
+          alert(`Error: ${data.error || 'Unknown issue'}`);
         }
       } catch (err) {
-        showError('logsResult', `❌ Network error: ${err.message}`);
+        alert(`Network error: ${err.message}`);
       }
     });
   </script>
-  
 </body>
 </html>
