@@ -500,6 +500,10 @@ async function securityPipeline(input, userId, history = []) {
   };
 }
 
+app.get('/api/simple-test', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  return res.json({ success: true, message: 'API is working properly' });
+});
 // ================== API ROUTES ==================
 // Enhanced API route for chat functionality
 app.get(['/logs', '/logs.htm', '/logs.html'], (req, res) => {
@@ -820,34 +824,35 @@ app.get('/api/test-file-write', async (req, res) => {
 });
 
 
-app.get('/api/admin/test-security-log', async (req, res) => {
+app.post('/api/admin/test-security-log', async (req, res) => {
   const adminKey = req.headers['x-admin-key'];
-  
-  // Verify admin key
+
+  res.setHeader('Content-Type', 'application/json');
+  console.log('Test security log endpoint called');
+  console.log('Headers received:', req.headers);
+  console.log('Admin key present:', !!adminKey);
+
   if (adminKey !== process.env.ADMIN_API_KEY) {
+    console.log('Unauthorized: Key mismatch or missing');
     return res.status(403).json({ error: 'Unauthorized' });
   }
-  
+
   try {
-    console.log('Test security log endpoint called');
-    
-    // Create a test security event
     const testEvent = await enhancedLogSecurityEvent('test_event', 'This is a test security event', {
       userId: 'admin_test',
       testId: Math.random().toString(36).substring(2, 15),
       timestamp: new Date().toISOString()
     });
-    
-    // Test if file writing works too
+
     const testFilePath = path.join(LOGS_DIR, 'test_log_event.json');
-    const testData = { 
-      test: 'data', 
+    const testData = {
+      test: 'data',
       timestamp: new Date().toISOString(),
       randomId: Math.random().toString(36).substring(2, 15)
     };
-    
+
     await writeFileAsync(testFilePath, JSON.stringify(testData, null, 2));
-    
+
     return res.json({
       success: true,
       message: 'Test security event logged successfully',

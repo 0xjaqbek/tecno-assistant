@@ -144,6 +144,7 @@
             try {
                 const response = await fetch('/api/admin/test-security-log', {
                     headers: {
+                        'Content-Type': 'application/json',
                         'x-admin-key': adminKey
                     }
                 });
