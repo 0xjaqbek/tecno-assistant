@@ -56,6 +56,9 @@ const LOGS_DIR = path.join(__dirname, 'logs');
 const SECURITY_LOGS_FILE = path.join(LOGS_DIR, 'security_logs.json');
 const CONVERSATION_LOGS_FILE = path.join(LOGS_DIR, 'conversation_logs.json');
 
+// Conversation archiving setting
+let conversationArchivingEnabled = true; // Default to enabled
+
 // Max number of logs to store
 const MAX_LOGS = 1000;
 
@@ -521,6 +524,54 @@ const openai = new OpenAI({
   timeout: 25000, // 25-second timeout
 });
 
+// Add an endpoint to toggle conversation archiving
+app.post('/api/admin/toggle-archiving', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  
+  // Verify admin key
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    // Toggle the current state
+    conversationArchivingEnabled = !conversationArchivingEnabled;
+    
+    console.log(`Conversation archiving is now ${conversationArchivingEnabled ? 'enabled' : 'disabled'}`);
+    
+    // Create a record in the logs for this action
+    await enhancedLogSecurityEvent('config_change', null, {
+      userId: 'admin',
+      action: 'toggle_conversation_archiving',
+      newState: conversationArchivingEnabled,
+      timestamp: new Date().toISOString()
+    });
+    
+    return res.json({ 
+      success: true, 
+      archivingEnabled: conversationArchivingEnabled,
+      message: `Conversation archiving is now ${conversationArchivingEnabled ? 'enabled' : 'disabled'}`
+    });
+  } catch (error) {
+    console.error('Error toggling conversation archiving:', error);
+    return res.status(500).json({ error: 'Error toggling conversation archiving' });
+  }
+});
+
+// Add an endpoint to get current archiving status
+app.get('/api/admin/archiving-status', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  
+  // Verify admin key
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  return res.json({ 
+    archivingEnabled: conversationArchivingEnabled
+  });
+});
+
 // ================== COMPREHENSIVE SECURITY PIPELINE ====================
 async function securityPipeline(input, userId, history = []) {
   console.log(`[SECURITY] Starting security pipeline for user: ${userId}`);
@@ -778,9 +829,11 @@ app.post('/api/chat', async (req, res) => {
             });
         }
         
-        // Log the conversation
-        await conversationStore.addMessage(userId, securityResult.sanitizedInput, true);
-        await conversationStore.addMessage(userId, responseResult.text, false);
+        // Log the conversation if archiving is enabled
+        if (conversationArchivingEnabled) {
+            await conversationStore.addMessage(userId, securityResult.sanitizedInput, true);
+            await conversationStore.addMessage(userId, responseResult.text, false);
+        }
         
         // Return the filtered response
         console.log("Sending response:", responseResult.text.substring(0, 50) + "...");

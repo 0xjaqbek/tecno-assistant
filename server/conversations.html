@@ -227,6 +227,25 @@
     .export-btn:hover {
       background-color: #2ecc71;
     }
+    .toggle-btn {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background-color 0.3s, color 0.3s;
+      margin-left: 10px;
+    }
+    .toggle-btn.enabled {
+      background-color: #27ae60;
+    }
+    .toggle-btn.disabled {
+      background-color: #e74c3c;
+    }
+    .toggle-btn:hover {
+      opacity: 0.9;
+    }
   </style>
 </head>
 <body>
@@ -261,6 +280,7 @@
       <button id="bulkExportBtn" disabled>Export Selected</button>
       <button id="refreshBtn">Refresh</button>
       <button id="clearBtn" class="danger-btn">Clear All</button>
+      <button id="toggleArchivingBtn" class="toggle-btn">Archiving: ...</button>
     </div>
   </div>
   
@@ -306,6 +326,7 @@
     const refreshBtn = document.getElementById('refreshBtn');
     const clearBtn = document.getElementById('clearBtn');
     const bulkExportBtn = document.getElementById('bulkExportBtn');
+    const toggleArchivingBtn = document.getElementById('toggleArchivingBtn');
     const conversationsList = document.getElementById('conversationsList');
     const paginationEl = document.getElementById('pagination');
     const logCountEl = document.getElementById('logCount');
@@ -318,6 +339,7 @@
     // Event Listeners
     refreshBtn.addEventListener('click', loadConversations);
     clearBtn.addEventListener('click', clearConversations);
+    toggleArchivingBtn.addEventListener('click', toggleArchiving);
     closeModal.addEventListener('click', () => conversationModal.style.display = 'none');
     statusFilter.addEventListener('change', filterConversations);
     sortBySelect.addEventListener('change', filterConversations);
@@ -340,8 +362,11 @@
       adminKeyInput.value = sessionStorage.getItem('securityAdminKey');
     }
     
-    // Load conversations when page loads
-    document.addEventListener('DOMContentLoaded', loadConversations);
+    // Load conversations and get archiving status when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      loadConversations();
+      getArchivingStatus();
+    });
     
     // Functions
     async function loadConversations() {
@@ -782,6 +807,96 @@
       
       // Show modal
       conversationModal.style.display = 'block';
+    }
+    
+    // Get current archiving status
+    async function getArchivingStatus() {
+      const adminKey = adminKeyInput.value;
+      if (!adminKey) {
+        toggleArchivingBtn.textContent = 'Archiving: ...';
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/admin/archiving-status', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': adminKey
+          }
+        });
+        
+        if (!response.ok) {
+          if (response.status === 403) {
+            toggleArchivingBtn.textContent = 'Archiving: Auth Error';
+          } else {
+            toggleArchivingBtn.textContent = 'Archiving: Error';
+          }
+          return;
+        }
+        
+        const data = await response.json();
+        updateArchivingButton(data.archivingEnabled);
+        
+      } catch (error) {
+        console.error('Error checking archiving status:', error);
+        toggleArchivingBtn.textContent = 'Archiving: Error';
+      }
+    }
+    
+    // Update the archiving button appearance
+    function updateArchivingButton(isEnabled) {
+      toggleArchivingBtn.textContent = isEnabled ? 'Archiving: Enabled' : 'Archiving: Disabled';
+      toggleArchivingBtn.className = isEnabled ? 'toggle-btn enabled' : 'toggle-btn disabled';
+    }
+    
+    // Toggle conversation archiving
+    async function toggleArchiving() {
+      const adminKey = adminKeyInput.value;
+      if (!adminKey) {
+        alert('Please enter the admin key');
+        return;
+      }
+      
+      // Determine the action being taken for the confirmation message
+      const currentState = toggleArchivingBtn.textContent.includes('Enabled');
+      const newState = !currentState;
+      const actionMsg = newState ? 'enable' : 'disable';
+      
+      if (!confirm(`Are you sure you want to ${actionMsg} conversation archiving? ${!newState ? "\\n\\nWARNING: When disabled, new conversations will NOT be saved." : ""}`)) {
+        return;
+      }
+      
+      try {
+        toggleArchivingBtn.textContent = 'Archiving: Updating...';
+        
+        const response = await fetch('/api/admin/toggle-archiving', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': adminKey
+          }
+        });
+        
+        if (!response.ok) {
+          if (response.status === 403) {
+            alert('Unauthorized: Invalid admin key');
+          } else {
+            alert('Error toggling archiving: ' + response.status);
+          }
+          getArchivingStatus(); // Refresh status
+          return;
+        }
+        
+        const data = await response.json();
+        alert(data.message);
+        updateArchivingButton(data.archivingEnabled);
+        
+      } catch (error) {
+        console.error('Error toggling archiving:', error);
+        alert('Error toggling archiving: ' + error.message);
+        getArchivingStatus(); // Refresh status
+      }
     }
   </script>
 </body>
