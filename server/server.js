@@ -59,18 +59,28 @@ const MAX_LOGS = 1000;
 
 // Enhanced logSecurityEvent function that saves logs to file
 export async function enhancedLogSecurityEvent(type, input, context = {}) {
-  if (!securityConfig.logging.enableLogging) return null;
+  console.log(`[LOG ATTEMPT] Attempting to log security event of type: ${type}`);
+  
+  if (!securityConfig.logging.enableLogging) {
+    console.log('[LOG SKIPPED] Logging is disabled in security config');
+    return null;
+  }
   
   // Only log event types configured in settings
-  if (!securityConfig.logging.logEvents.includes(type)) return null;
+  if (!securityConfig.logging.logEvents.includes(type)) {
+    console.log(`[LOG SKIPPED] Event type ${type} is not in configured log events list`);
+    return null;
+  }
   
   const timestamp = new Date().toISOString();
+  console.log(`[LOG INFO] Creating log entry with timestamp: ${timestamp}`);
   
   // Prepare input for logging with length limitation
   let inputForLog = '';
   if (securityConfig.logging.logUserInput && input) {
     const maxLength = securityConfig.logging.maxInputLogLength || 100;
     inputForLog = input.substring(0, maxLength) + (input.length > maxLength ? '...' : '');
+    console.log(`[LOG INFO] Input truncated to ${inputForLog.length} characters`);
   }
   
   // Create structured log entry
@@ -83,46 +93,75 @@ export async function enhancedLogSecurityEvent(type, input, context = {}) {
   
   // Determine environment (browser vs node)
   const isBrowser = typeof window !== 'undefined';
+  console.log(`[LOG INFO] Environment detection: isBrowser=${isBrowser}`);
   
   // Console log for development 
   if (process.env.NODE_ENV === 'development') {
     console.warn(`[SECURITY EVENT] ${timestamp} - ${type}`);
     console.warn(JSON.stringify(logEntry, null, 2));
+  } else {
+    console.log(`[LOG INFO] Not in development mode, NODE_ENV=${process.env.NODE_ENV}`);
   }
+  
+  // Always log security events regardless of environment
+  console.warn(`[SECURITY EVENT] ${timestamp} - ${type}`);
   
   // Save to file in Node.js environment
   if (!isBrowser) {
+    console.log(`[LOG INFO] Attempting to save log to file system at: ${LOGS_DIR}`);
     try {
       // Create logs directory if it doesn't exist
+      console.log(`[LOG INFO] Checking if logs directory exists: ${LOGS_DIR}`);
       if (!fs.existsSync(LOGS_DIR)) {
+        console.log('[LOG INFO] Logs directory does not exist, creating it');
         await mkdirAsync(LOGS_DIR, { recursive: true });
+        console.log('[LOG INFO] Logs directory created successfully');
+      } else {
+        console.log('[LOG INFO] Logs directory already exists');
       }
       
       // Read existing logs or create empty array
       let logs = [];
+      console.log(`[LOG INFO] Attempting to read existing logs from: ${SECURITY_LOGS_FILE}`);
       try {
         const logsData = await readFileAsync(SECURITY_LOGS_FILE, 'utf8');
         logs = JSON.parse(logsData);
+        console.log(`[LOG INFO] Successfully read ${logs.length} existing logs`);
       } catch (error) {
+        console.log('[LOG INFO] Could not read existing logs file, details:', error.message);
         // File doesn't exist or is invalid JSON, start with empty array
         logs = [];
+        console.log('[LOG INFO] Starting with empty logs array');
       }
       
       // Add new log entry
       logs.unshift(logEntry);
+      console.log(`[LOG INFO] Added new log entry, logs array now has ${logs.length} entries`);
       
       // Trim logs if over maximum
       if (logs.length > MAX_LOGS) {
         logs = logs.slice(0, MAX_LOGS);
+        console.log(`[LOG INFO] Trimmed logs to maximum of ${MAX_LOGS} entries`);
       }
       
       // Write logs back to file
+      console.log(`[LOG INFO] Writing logs to file: ${SECURITY_LOGS_FILE}`);
       await writeFileAsync(SECURITY_LOGS_FILE, JSON.stringify(logs, null, 2));
+      console.log('[LOG INFO] Successfully wrote logs to file');
     } catch (error) {
-      console.error('Error saving security log to file:', error);
+      console.error('[LOG ERROR] Error saving security log to file:', error);
+      console.error('[LOG ERROR] Error details:', {
+        message: error.message, 
+        stack: error.stack,
+        logsDir: LOGS_DIR,
+        logsFile: SECURITY_LOGS_FILE
+      });
     }
+  } else {
+    console.log('[LOG INFO] In browser environment, skipping file system operations');
   }
   
+  console.log('[LOG INFO] Returning log entry');
   return logEntry;
 }
 
@@ -342,8 +381,10 @@ const openai = new OpenAI({
 
 // ================== COMPREHENSIVE SECURITY PIPELINE ====================
 async function securityPipeline(input, userId, history = []) {
+  console.log(`[SECURITY] Starting security pipeline for user: ${userId}`);
   // Skip empty inputs
   if (!input || input.trim() === '') {
+    console.log('[SECURITY] Empty input, skipping security checks');
     return {
       isSecurityThreat: false,
       riskScore: 0,
@@ -352,20 +393,30 @@ async function securityPipeline(input, userId, history = []) {
     };
   }
 
+  console.log('[SECURITY] Phase 1: Basic pattern checks & sanitization');
   // Phase 1: Basic pattern checks & sanitization
   const sanitized = sanitizeInput(input);
   const patternCheck = detectJailbreakAttempt(sanitized.text);
+  console.log(`[SECURITY] Sanitization complete, jailbreak detection result: ${patternCheck.isJailbreakAttempt ? 'DETECTED' : 'NONE'}, score: ${patternCheck.score}`);
   
+  console.log('[SECURITY] Phase 2: Advanced checks');
   // Phase 2: Advanced checks
   const structureAnalysis = analyzeInputStructure(sanitized.text);
   const obfuscationCheck = detectObfuscationTechniques(sanitized.text);
+  console.log(`[SECURITY] Structure analysis: ${structureAnalysis.suspiciousStructure ? 'SUSPICIOUS' : 'NORMAL'}`);
+  console.log(`[SECURITY] Obfuscation check: ${obfuscationCheck.hasObfuscation ? 'DETECTED' : 'NONE'}`);
   
+  console.log('[SECURITY] Phase 3: Canary token check');
   // Phase 3: Canary token check
   const canaryCheck = checkForCanaryLeakage(sanitized.text, activeCanaries);
+  console.log(`[SECURITY] Canary check: ${canaryCheck.hasLeakage ? 'LEAKED' : 'SECURE'}`);
   
+  console.log('[SECURITY] Phase 4: Contextual analysis');
   // Phase 4: Contextual analysis
   const contextState = contextTracker.updateState(sanitized.text, patternCheck);
+  console.log(`[SECURITY] Context drift: ${contextState.contextDrift.toFixed(2)}`);
   
+  console.log('[SECURITY] Phase 5: Composite risk scoring');
   // Phase 5: Composite risk scoring
   const riskFactors = [
     patternCheck.isJailbreakAttempt ? patternCheck.score : 0,
@@ -380,13 +431,20 @@ async function securityPipeline(input, userId, history = []) {
     (riskFactors.reduce((sum, score) => sum + score, 0) / riskFactors.length) * 1.5
   );
   
+  console.log(`[SECURITY] Risk factors: ${JSON.stringify(riskFactors)}`);
+  console.log(`[SECURITY] Max risk score: ${maxRiskScore}`);
+  console.log(`[SECURITY] Composite risk score: ${compositeRiskScore}`);
+  
   // Phase 6: Security response determination
   const isBlocked = compositeRiskScore > 70 || maxRiskScore > 90 || canaryCheck.hasLeakage;
   const requiresDelay = compositeRiskScore > 30 && !isBlocked;
   
+  console.log(`[SECURITY] Security response: isBlocked=${isBlocked}, requiresDelay=${requiresDelay}`);
+  
   // Log security event for suspicious inputs
   if (compositeRiskScore > 25 || maxRiskScore > 50) {
-    const securityEvent = logSecurityEvent('suspicious_input', sanitized.text, {
+    console.log('[SECURITY] Input classified as suspicious, logging security event');
+    const securityEvent = await enhancedLogSecurityEvent('suspicious_input', sanitized.text, {
       userId,
       riskScore: compositeRiskScore,
       maxRiskFactor: maxRiskScore,
@@ -397,17 +455,26 @@ async function securityPipeline(input, userId, history = []) {
       contextDrift: contextState.contextDrift
     });
     
+    console.log(`[SECURITY] Security event logged: ${securityEvent ? 'SUCCESS' : 'FAILED'}`);
+    
     // Add to security history
     if (useRedis) {
-      await addSecurityEvent(userId, securityEvent);
+      console.log('[SECURITY] Adding event to Redis security history');
+      const redisResult = await addSecurityEvent(userId, securityEvent);
+      console.log(`[SECURITY] Redis add result: ${redisResult ? 'SUCCESS' : 'FAILED'}`);
     } else {
+      console.log('[SECURITY] Adding event to in-memory security history');
       if (!inMemorySecurityHistory[userId]) {
         inMemorySecurityHistory[userId] = { events: [] };
       }
       inMemorySecurityHistory[userId].events.push(securityEvent);
+      console.log(`[SECURITY] In-memory history updated, now has ${inMemorySecurityHistory[userId].events.length} events`);
     }
+  } else {
+    console.log('[SECURITY] Input classified as safe, no security event logged');
   }
   
+  console.log('[SECURITY] Security pipeline complete');
   return {
     isSecurityThreat: isBlocked,
     shouldDelay: requiresDelay,
@@ -604,27 +671,42 @@ app.get('/admin/security-diagnostics', (req, res) => {
 app.get('/api/admin/security-logs', async (req, res) => {
   const adminKey = req.headers['x-admin-key'];
   
+  console.log('Logs request received, auth status:', adminKey === process.env.ADMIN_API_KEY);
+  console.log('ADMIN_API_KEY defined:', !!process.env.ADMIN_API_KEY);
+  
   // Verify admin key
   if (adminKey !== process.env.ADMIN_API_KEY) {
+    console.log('Unauthorized logs access attempt');
     return res.status(403).json({ error: 'Unauthorized' });
   }
   
   try {
     // Create logs directory if it doesn't exist
+    console.log('Checking if logs directory exists:', LOGS_DIR);
     if (!fs.existsSync(LOGS_DIR)) {
+      console.log('Logs directory does not exist, creating...');
       await mkdirAsync(LOGS_DIR, { recursive: true });
+      console.log('Logs directory created successfully');
+    } else {
+      console.log('Logs directory exists');
     }
     
     // Read logs from file
     let logs = [];
     try {
+      console.log('Attempting to read logs from:', SECURITY_LOGS_FILE);
       const logsData = await readFileAsync(SECURITY_LOGS_FILE, 'utf8');
+      console.log('Successfully read logs file, content length:', logsData.length);
       logs = JSON.parse(logsData);
+      console.log(`Successfully parsed ${logs.length} logs`);
     } catch (error) {
+      console.error('Error reading logs file:', error);
       // File doesn't exist or is invalid JSON, return empty array
       logs = [];
+      console.log('Using empty logs array due to error');
     }
     
+    console.log(`Returning ${logs.length} logs to client`);
     return res.json({ logs });
   } catch (error) {
     console.error('Error reading security logs:', error);
@@ -665,10 +747,79 @@ app.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, "./dist/index.html"));
 });
 
+// Add test endpoint for file writing
+app.get('/api/test-file-write', async (req, res) => {
+  try {
+    console.log('Test file write endpoint called');
+    
+    // Create logs directory if it doesn't exist
+    console.log(`Checking if logs directory exists: ${LOGS_DIR}`);
+    if (!fs.existsSync(LOGS_DIR)) {
+      console.log('Creating logs directory');
+      await mkdirAsync(LOGS_DIR, { recursive: true });
+      console.log('Logs directory created successfully');
+    } else {
+      console.log('Logs directory already exists');
+    }
+    
+    const testFile = path.join(LOGS_DIR, 'test.json');
+    console.log(`Writing test file to: ${testFile}`);
+    
+    const testData = { 
+      test: 'data', 
+      timestamp: new Date().toISOString(),
+      randomId: Math.random().toString(36).substring(2, 15)
+    };
+    
+    await writeFileAsync(testFile, JSON.stringify(testData, null, 2));
+    console.log('Test file written successfully');
+    
+    return res.json({ 
+      success: true, 
+      message: 'Test file written successfully',
+      filePath: testFile,
+      data: testData
+    });
+  } catch (error) {
+    console.error('Error writing test file:', error);
+    return res.status(500).json({ 
+      error: 'Error writing test file', 
+      details: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // ================== SERVER STARTUP ==================
 // Start the server
 app.listen(port, () => {
     console.log(`Serwer nasłuchuje na porcie ${port}`);
     console.log(`Wzmocniona ochrona anty-jailbreak aktywna`);
     console.log(`Konfiguracja: ${securityConfig.advanced.useEnhancedPromptStructure ? 'Zaawansowana' : 'Standardowa'}`);
+    
+    // Log directory information on startup
+    console.log('Server environment:');
+    console.log(`- Current directory: ${process.cwd()}`);
+    console.log(`- __dirname: ${__dirname}`);
+    console.log(`- Logs directory: ${LOGS_DIR}`);
+    console.log(`- Security logs file: ${SECURITY_LOGS_FILE}`);
+    
+    // Check logs directory on startup
+    try {
+        if (!fs.existsSync(LOGS_DIR)) {
+            fs.mkdirSync(LOGS_DIR, { recursive: true });
+            console.log('Created logs directory at startup');
+        } else {
+            console.log('Logs directory exists');
+            // Check if directory is writable
+            try {
+                fs.accessSync(LOGS_DIR, fs.constants.W_OK);
+                console.log('Logs directory is writable');
+            } catch (e) {
+                console.error('Logs directory is not writable!', e);
+            }
+        }
+    } catch (error) {
+        console.error('Error checking/creating logs directory:', error);
+    }
 });
