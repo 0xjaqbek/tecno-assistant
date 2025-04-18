@@ -502,6 +502,20 @@ async function securityPipeline(input, userId, history = []) {
 
 // ================== API ROUTES ==================
 // Enhanced API route for chat functionality
+app.get(['/logs', '/logs.htm', '/logs.html'], (req, res) => {
+  const filePath = path.join(__dirname, 'logs.html');
+  console.log('Attempting to serve logs troubleshooter from:', filePath);
+  
+  // Check if file exists
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('Logs troubleshooter file not found. Expected at: ' + filePath);
+  }
+});
+
+
+
 app.post('/api/chat', async (req, res) => {
     try {
         const { message, history = [] } = req.body;
@@ -748,18 +762,6 @@ app.get(['/admin/security-logs', '/admin/security-logs.html', '/security-logs.ht
 
 
 // ================== STATIC FILES SERVING ==================
-app.get(['/logs', '/logs.htm', '/logs.html'], (req, res) => {
-  const filePath = path.join(__dirname, 'logs.html');
-  console.log('Attempting to serve logs troubleshooter from:', filePath);
-  
-  // Check if file exists
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).send('Logs troubleshooter file not found. Expected at: ' + filePath);
-  }
-});
-
 
 // Static files and catch-all route
 app.use(express.static(path.join(__dirname, "./dist")));
