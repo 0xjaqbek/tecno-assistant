@@ -797,6 +797,10 @@ app.get('/api/test-file-write', async (req, res) => {
   }
 });
 
+app.get(['/logs', '/logs.htm', '/logs.html'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'logs.htm'));
+});
+
 app.get('/api/admin/test-security-log', async (req, res) => {
   const adminKey = req.headers['x-admin-key'];
   
