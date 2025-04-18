@@ -798,7 +798,15 @@ app.get('/api/test-file-write', async (req, res) => {
 });
 
 app.get(['/logs', '/logs.htm', '/logs.html'], (req, res) => {
-  res.sendFile(path.join(__dirname, 'logs.htm'));
+  const filePath = path.join(__dirname, 'logs.htm');
+  console.log('Attempting to serve logs troubleshooter from:', filePath);
+  
+  // Check if file exists
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('Logs troubleshooter file not found. Expected at: ' + filePath);
+  }
 });
 
 app.get('/api/admin/test-security-log', async (req, res) => {
