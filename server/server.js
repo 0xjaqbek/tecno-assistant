@@ -6,16 +6,7 @@ import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
 import fs from 'fs';
 import { promisify } from 'util';
-
-// Path to the log file
-const logFilePath = path.join(process.cwd(), 'server', 'security.log');
-
-// Log helper
-export function logSecurityEvent(event) {
-  const timestamp = new Date().toISOString();
-  const message = `[${timestamp}] ${event}\n`;
-  fs.appendFileSync(logFilePath, message, 'utf8');
-}
+import { v4 as uuidv4 } from 'uuid';
 
 // In ES modules, __dirname is not available, so we create it
 const __filename = fileURLToPath(import.meta.url);
@@ -28,7 +19,7 @@ import {
   detectJailbreakAttempt,
   filterBotResponse,
   getSecurityMessage,
-  logSecurityEventOld,
+  logSecurityEvent,
   generateSecureSystemMessage
 } from './client/src/security/utils.js';
 
@@ -63,6 +54,7 @@ const mkdirAsync = promisify(fs.mkdir);
 // Path to logs storage directory and file
 const LOGS_DIR = path.join(__dirname, 'logs');
 const SECURITY_LOGS_FILE = path.join(LOGS_DIR, 'security_logs.json');
+const CONVERSATION_LOGS_FILE = path.join(LOGS_DIR, 'conversation_logs.json');
 
 // Max number of logs to store
 const MAX_LOGS = 1000;
@@ -94,8 +86,9 @@ export async function enhancedLogSecurityEvent(type, input, context = {}) {
   
   // Prepare input for logging with length limitation
   let inputForLog = '';
-    if (securityConfig.logging.logUserInput && input) {
-      inputForLog = input;
+  if (securityConfig.logging.logUserInput && input) {
+    const maxLength = securityConfig.logging.maxInputLogLength || 100;
+    inputForLog = input.substring(0, maxLength) + (input.length > maxLength ? '...' : '');
     console.log(`[LOG INFO] Input truncated to ${inputForLog.length} characters`);
   }
   
@@ -181,6 +174,139 @@ export async function enhancedLogSecurityEvent(type, input, context = {}) {
   return logEntry;
 }
 
+// Conversation storage system
+const conversationStore = {
+  conversations: [],
+  
+  // Load conversations from disk
+  async load() {
+    try {
+      if (fs.existsSync(CONVERSATION_LOGS_FILE)) {
+        const data = await readFileAsync(CONVERSATION_LOGS_FILE, 'utf8');
+        this.conversations = JSON.parse(data);
+        console.log(`Loaded ${this.conversations.length} conversations from storage`);
+      } else {
+        this.conversations = [];
+        console.log('No conversation log file found, starting with empty array');
+      }
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+      this.conversations = [];
+    }
+    return this.conversations;
+  },
+  
+  // Save conversations to disk
+  async save() {
+    try {
+      await writeFileAsync(CONVERSATION_LOGS_FILE, JSON.stringify(this.conversations, null, 2));
+      console.log(`Saved ${this.conversations.length} conversations to storage`);
+      return true;
+    } catch (error) {
+      console.error('Error saving conversations:', error);
+      return false;
+    }
+  },
+  
+  // Add a new message to a conversation
+  async addMessage(userId, message, isUser = true) {
+    await this.load();
+    
+    // Find existing conversation or create a new one
+    let conversation = this.conversations.find(c => c.userId === userId && !c.ended);
+    
+    if (!conversation) {
+      conversation = {
+        id: uuidv4(),
+        userId: userId,
+        startTime: new Date().toISOString(),
+        lastActivity: new Date().toISOString(),
+        messages: [],
+        ended: false
+      };
+      this.conversations.unshift(conversation); // Add to beginning of array
+    } else {
+      conversation.lastActivity = new Date().toISOString();
+    }
+    
+    // Add message to conversation
+    conversation.messages.push({
+      id: uuidv4(),
+      timestamp: new Date().toISOString(),
+      content: message,
+      role: isUser ? 'user' : 'assistant'
+    });
+    
+    // Limit conversations array size to prevent memory issues
+    if (this.conversations.length > 500) {
+      this.conversations = this.conversations.slice(0, 500);
+    }
+    
+    return await this.save();
+  },
+  
+  // End a conversation
+  async endConversation(userId) {
+    await this.load();
+    
+    const conversation = this.conversations.find(c => c.userId === userId && !c.ended);
+    if (conversation) {
+      conversation.ended = true;
+      conversation.endTime = new Date().toISOString();
+      return await this.save();
+    }
+    
+    return false;
+  },
+  
+  // Get all conversations
+  async getAll() {
+    await this.load();
+    return this.conversations;
+  },
+  
+  // Get a specific conversation by ID
+  async getById(id) {
+    await this.load();
+    return this.conversations.find(c => c.id === id);
+  },
+  
+  // Get conversations for a specific user
+  async getByUser(userId) {
+    await this.load();
+    return this.conversations.filter(c => c.userId === userId);
+  },
+  
+  // Automatically end conversations that have been inactive for a specified period
+  async endInactiveConversations(inactivityPeriodMs = 30 * 60 * 1000) {
+    await this.load();
+    
+    const now = new Date();
+    let endedCount = 0;
+    
+    for (const conversation of this.conversations) {
+      if (!conversation.ended) {
+        const lastActivity = new Date(conversation.lastActivity);
+        const inactiveDuration = now - lastActivity;
+        
+        if (inactiveDuration > inactivityPeriodMs) {
+          conversation.ended = true;
+          conversation.endTime = now.toISOString();
+          conversation.endReason = 'inactivity';
+          endedCount++;
+        }
+      }
+    }
+    
+    if (endedCount > 0) {
+      console.log(`Auto-ended ${endedCount} inactive conversations`);
+      await this.save();
+    }
+    
+    return endedCount;
+  }
+};
+
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
@@ -264,7 +390,7 @@ app.use(async (req, res, next) => {
     const severity = Math.min(10, Math.floor((requestData.count / config.maxRequests) * 10));
     
     // Log rate limit event
-    logSecurityEventOld('rateLimit', null, {
+    logSecurityEvent('rateLimit', null, {
       userId,
       requestsCount: requestData.count,
       limit: config.maxRequests,
@@ -513,6 +639,7 @@ app.get('/api/simple-test', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   return res.json({ success: true, message: 'API is working properly' });
 });
+
 // ================== API ROUTES ==================
 // Enhanced API route for chat functionality
 app.get(['/logs', '/logs.htm', '/logs.html'], (req, res) => {
@@ -526,8 +653,6 @@ app.get(['/logs', '/logs.htm', '/logs.html'], (req, res) => {
     res.status(404).send('Logs troubleshooter file not found. Expected at: ' + filePath);
   }
 });
-
-
 
 app.post('/api/chat', async (req, res) => {
     try {
@@ -653,6 +778,10 @@ app.post('/api/chat', async (req, res) => {
             });
         }
         
+        // Log the conversation
+        await conversationStore.addMessage(userId, securityResult.sanitizedInput, true);
+        await conversationStore.addMessage(userId, responseResult.text, false);
+        
         // Return the filtered response
         console.log("Sending response:", responseResult.text.substring(0, 50) + "...");
         return res.json({ response: responseResult.text });
@@ -672,6 +801,105 @@ app.post('/api/chat', async (req, res) => {
             details: getSecurityMessage('serverError', 4)
         });
     }
+});
+
+// Conversation API endpoints
+app.get('/api/admin/conversations', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  
+  // Verify admin key
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const conversations = await conversationStore.getAll();
+    return res.json({ conversations });
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    return res.status(500).json({ error: 'Error fetching conversations' });
+  }
+});
+
+// Get a specific conversation by ID (admin only)
+app.get('/api/admin/conversations/:id', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  const { id } = req.params;
+  
+  // Verify admin key
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const conversation = await conversationStore.getById(id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    
+    return res.json({ conversation });
+  } catch (error) {
+    console.error('Error fetching conversation:', error);
+    return res.status(500).json({ error: 'Error fetching conversation' });
+  }
+});
+
+// Clear all conversations (admin only)
+app.delete('/api/admin/conversations', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  
+  // Verify admin key
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    conversationStore.conversations = [];
+    await conversationStore.save();
+    
+    return res.json({ success: true, message: 'All conversations cleared' });
+  } catch (error) {
+    console.error('Error clearing conversations:', error);
+    return res.status(500).json({ error: 'Error clearing conversations' });
+  }
+});
+
+// Manually end a conversation
+app.post('/api/admin/conversations/:id/end', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  const { id } = req.params;
+  
+  // Verify admin key
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const conversation = await conversationStore.getById(id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    
+    if (conversation.ended) {
+      return res.json({ success: true, message: 'Conversation already ended', conversation });
+    }
+    
+    // End the conversation
+    conversation.ended = true;
+    conversation.endTime = new Date().toISOString();
+    conversation.endReason = 'manual';
+    
+    await conversationStore.save();
+    
+    return res.json({ 
+      success: true, 
+      message: 'Conversation ended successfully', 
+      conversation 
+    });
+  } catch (error) {
+    console.error('Error ending conversation:', error);
+    return res.status(500).json({ error: 'Error ending conversation' });
+  }
 });
 
 // Diagnostic endpoint (for authorized admin use only)
@@ -773,32 +1001,110 @@ app.get(['/admin/security-logs', '/admin/security-logs.html', '/security-logs.ht
   res.sendFile(path.join(__dirname, 'security-logs.html'));
 });
 
+// Add route for conversations viewer
+app.get(['/admin/conversations', '/admin/conversations.html', '/conversations.html'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'conversations.html'));
+});
+
+// Create the conversations.html file
+const conversationsHtmlPath = path.join(__dirname, 'conversations.html');
+// Write the conversations viewer to the file system
+try {
+  if (!fs.existsSync(conversationsHtmlPath)) {
+    fs.writeFileSync(conversationsHtmlPath, fs.readFileSync(path.join(__dirname, 'security-logs.html'), 'utf8')
+      .replace('<title>Security Logs Viewer</title>', '<title>Conversation Logs Viewer</title>')
+      .replace('<h1>Security Logs Viewer</h1>', '<h1>Admin Portal</h1>')
+      .replace('<script>', `<script>
+        // Redirect to conversations viewer
+        document.addEventListener('DOMContentLoaded', function() {
+          // Add tabs if they don't exist
+          if (!document.querySelector('.tabs')) {
+            const headerEl = document.querySelector('h1');
+            const tabsHtml = \`
+              <div class="tabs">
+                <div id="securityLogsTab" class="tab">Security Logs</div>
+                <div id="conversationsTab" class="tab active">Conversations</div>
+              </div>
+            \`;
+            headerEl.insertAdjacentHTML('afterend', tabsHtml);
+            
+            // Add event listeners
+            document.getElementById('securityLogsTab').addEventListener('click', function() {
+              window.location.href = '/admin/security-logs';
+            });
+          }
+        });
+      `));
+    console.log('Created conversations.html file');
+  }
+} catch (error) {
+  console.error('Error creating conversations.html file:', error);
+}
+
+// Also add a link in the security logs menu
+// Update the security-logs.html file to include the tabs
+try {
+  const securityLogsHtmlPath = path.join(__dirname, 'security-logs.html');
+  if (fs.existsSync(securityLogsHtmlPath)) {
+    const securityLogsHtml = fs.readFileSync(securityLogsHtmlPath, 'utf8');
+    // Only update if it doesn't already have the tabs
+    if (!securityLogsHtml.includes('<div class="tabs">')) {
+      const updatedHtml = securityLogsHtml
+        .replace('<h1>Security Logs Viewer</h1>', '<h1>Admin Portal</h1>')
+        .replace('<script>', `<script>
+          // Add tabs if they don't exist
+          document.addEventListener('DOMContentLoaded', function() {
+            if (!document.querySelector('.tabs')) {
+              const headerEl = document.querySelector('h1');
+              const tabsHtml = \`
+                <div class="tabs">
+                  <div id="securityLogsTab" class="tab active">Security Logs</div>
+                  <div id="conversationsTab" class="tab">Conversations</div>
+                </div>
+              \`;
+              headerEl.insertAdjacentHTML('afterend', tabsHtml);
+              
+              // Add event listeners
+              document.getElementById('conversationsTab').addEventListener('click', function() {
+                window.location.href = '/admin/conversations';
+              });
+              
+              // Add styles for tabs
+              const styleEl = document.createElement('style');
+              styleEl.textContent = \`
+                .tabs {
+                  display: flex;
+                  margin-bottom: 20px;
+                  border-bottom: 1px solid #ddd;
+                }
+                .tab {
+                  padding: 10px 20px;
+                  cursor: pointer;
+                  background-color: #f1f1f1;
+                  border: 1px solid #ddd;
+                  border-bottom: none;
+                  border-radius: 5px 5px 0 0;
+                  margin-right: 5px;
+                }
+                .tab.active {
+                  background-color: #3498db;
+                  color: white;
+                  border-color: #3498db;
+                }
+              \`;
+              document.head.appendChild(styleEl);
+            }
+          });
+        `);
+      fs.writeFileSync(securityLogsHtmlPath, updatedHtml);
+      console.log('Updated security-logs.html with tabs');
+    }
+  }
+} catch (error) {
+  console.error('Error updating security-logs.html:', error);
+}
 
 // ================== STATIC FILES SERVING ==================
-
-// Fetch logs
-app.get('/api/admin/security-logs', (req, res) => {
-  try {
-    const logs = fs.existsSync(logFilePath)
-      ? fs.readFileSync(logFilePath, 'utf8')
-      : '';
-    const logEntries = logs.trim().split('\n').filter(Boolean);
-    res.json({ logs: logEntries });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to read logs' });
-  }
-});
-
-// Clear logs
-app.post('/api/admin/clear-logs', (req, res) => {
-  try {
-    fs.writeFileSync(logFilePath, '', 'utf8');
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to clear logs' });
-  }
-});
-
 
 // Static files and catch-all route
 app.use(express.static(path.join(__dirname, "./dist")));
@@ -807,7 +1113,7 @@ app.get("*", (req, res) => {
 });
 
 // Add test endpoint for file writing
-app.post('/api/test-file-write', async (req, res) => {
+app.get('/api/test-file-write', async (req, res) => {
   const adminKey = req.headers['x-admin-key'];
   
   // Verify admin key
@@ -855,7 +1161,6 @@ app.post('/api/test-file-write', async (req, res) => {
     });
   }
 });
-
 
 app.post('/api/admin/test-security-log', async (req, res) => {
   const adminKey = req.headers['x-admin-key'];
@@ -905,6 +1210,22 @@ app.post('/api/admin/test-security-log', async (req, res) => {
   }
 });
 
+// Configure auto-ending inactive conversations
+const INACTIVE_CHECK_INTERVAL = 15 * 60 * 1000; // 15 minutes
+const AUTO_END_INACTIVITY_PERIOD = 60 * 60 * 1000; // 1 hour
+
+// Set up interval to end inactive conversations
+setInterval(async () => {
+  try {
+    const endedCount = await conversationStore.endInactiveConversations(AUTO_END_INACTIVITY_PERIOD);
+    if (endedCount > 0) {
+      console.log(`Auto-ended ${endedCount} inactive conversations`);
+    }
+  } catch (error) {
+    console.error('Error in auto-ending inactive conversations:', error);
+  }
+}, INACTIVE_CHECK_INTERVAL);
+
 // ================== SERVER STARTUP ==================
 // Start the server
 app.listen(port, () => {
@@ -918,6 +1239,7 @@ app.listen(port, () => {
     console.log(`- __dirname: ${__dirname}`);
     console.log(`- Logs directory: ${LOGS_DIR}`);
     console.log(`- Security logs file: ${SECURITY_LOGS_FILE}`);
+    console.log(`- Conversation logs file: ${CONVERSATION_LOGS_FILE}`);
     
     // Check logs directory on startup
     try {
