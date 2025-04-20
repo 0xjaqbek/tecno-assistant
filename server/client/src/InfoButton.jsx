@@ -1,13 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import './InfoButton.css';
 
 const InfoButton = () => {
   const [showModal, setShowModal] = useState(false);
+  const modalRef = useRef(null);
+
+  // Close on background click
+  const handleClickOutside = (e) => {
+    if (modalRef.current && !modalRef.current.contains(e.target)) {
+      setShowModal(false);
+    }
+  };
+
+  // Add/remove listener only when modal is shown
+  useEffect(() => {
+    if (showModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showModal]);
 
   const modal = (
     <div className="info-modal-overlay">
-      <div className="info-modal">
+      <div className="info-modal fade-in" ref={modalRef}>
         <button className="info-modal-close" onClick={() => setShowModal(false)}>×</button>
         <div className="info-modal-content">
           <h2>Projektor Snów</h2>
