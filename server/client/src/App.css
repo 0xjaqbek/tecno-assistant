@@ -398,11 +398,12 @@ body {
 }
 
 .input-area:focus-within {
+  border: 1px solid rgb(14, 219, 255);
   box-shadow: 
-    0 12px 25px rgba(0, 0, 0, 0.6),
-    0 6px 20px rgba(0, 10, 20, 0.4),
-    0 0 20px rgba(14, 219, 255, 0.3),
-    inset 0 1px 3px rgba(14, 219, 255, 0.2);
+    0 12px 25px rgba(14, 219, 255, 0.4),
+    0 6px 20px rgba(14, 219, 255, 0.2),
+    0 0 20px rgba(14, 219, 255, 0.9),
+    inset 0 1px 3px rgba(14, 219, 255, 0.6);
 }
 
 .input-area::before {
