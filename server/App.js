@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
+import session from 'express-session'; 
 // Routes
 import apiRoutes from './routes/api.routes.js';
 import adminRoutes from './routes/admin.routes.js';
@@ -20,8 +20,7 @@ const __dirname = path.dirname(__filename);
 // Create Express app
 const app = express();
 
-const session = require('express-session');
-
+// Session setup
 app.use(session({
   secret: 'moonstone-secret-key',
   resave: false,
