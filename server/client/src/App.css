@@ -397,6 +397,10 @@ body {
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+.input-area {
+  transition: border 0.5s ease, box-shadow 0.5s ease;
+}
+
 .input-area:focus-within {
   border: 1px solid rgb(14, 219, 255);
   box-shadow: 
