@@ -122,7 +122,13 @@ import {
     console.log(`[SECURITY] Composite risk score: ${compositeRiskScore}`);
     
     // Phase 6: Security response determination
-    const isBlocked = compositeRiskScore > 10 || maxRiskScore > 20 || canaryCheck.hasLeakage;
+    const isJailbreakDetected = patternCheck && patternCheck.isJailbreakAttempt;
+    const isBlocked = isJailbreakDetected || compositeRiskScore > 15 || maxRiskScore > 50 || canaryCheck.hasLeakage;
+
+    // Dla pewności, dodaj też informację w logach:
+    if (isJailbreakDetected) {
+    console.log('[SECURITY] Jailbreak wykryty w wzorcach - blokowanie wiadomości');
+    }
     const requiresDelay = compositeRiskScore > 15 && !isBlocked;
     
     console.log(`[SECURITY] Security response: isBlocked=${isBlocked}, requiresDelay=${requiresDelay}`);
