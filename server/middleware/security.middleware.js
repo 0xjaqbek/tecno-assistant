@@ -111,5 +111,3 @@ export const detectUnauthorizedAdminTricks = async (req, res, next) => {
     }
     next();
   };
-
-  app.post('/api/chat', detectUnauthorizedAdminTricks, chatController.handleChat);

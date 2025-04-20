@@ -1,6 +1,7 @@
 // routes/api.routes.js - API routes
 import express from 'express';
 import { processChat } from '../controllers/chat.controller.js';
+import { detectUnauthorizedAdminTricks } from '../middleware/security.middleware.js';
 
 const router = express.Router();
 
@@ -10,7 +11,7 @@ router.get('/simple-test', (req, res) => {
   return res.json({ success: true, message: 'API is working properly' });
 });
 
-// Chat endpoint
-router.post('/chat', processChat);
+// Chat endpoint with security filter
+router.post('/chat', detectUnauthorizedAdminTricks, processChat);
 
 export default router;
