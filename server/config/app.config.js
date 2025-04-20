@@ -13,7 +13,7 @@ export default {
     apiKey: process.env.DEEPSEEK_API_KEY,
     baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
     model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
-    timeout: 25000, // 25-second timeout
+    timeout: 30000, // 30-second timeout
   },
   
   // Admin configuration
