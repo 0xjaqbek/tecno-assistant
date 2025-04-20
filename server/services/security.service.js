@@ -108,7 +108,7 @@ import {
       patternCheck.isJailbreakAttempt ? patternCheck.score : 0,
       structureAnalysis.suspiciousStructure ? 40 : 0,
       obfuscationCheck.hasObfuscation ? 60 : 0,
-      contextState.contextDrift * 50,
+      contextState.contextDrift * 30,
       canaryCheck.hasLeakage ? 100 : 0
     ];
     
@@ -122,7 +122,7 @@ import {
     console.log(`[SECURITY] Composite risk score: ${compositeRiskScore}`);
     
     // Phase 6: Security response determination
-    const isBlocked = compositeRiskScore > 3 || maxRiskScore > 10 || canaryCheck.hasLeakage;
+    const isBlocked = compositeRiskScore > 10 || maxRiskScore > 20 || canaryCheck.hasLeakage;
     const requiresDelay = compositeRiskScore > 15 && !isBlocked;
     
     console.log(`[SECURITY] Security response: isBlocked=${isBlocked}, requiresDelay=${requiresDelay}`);
