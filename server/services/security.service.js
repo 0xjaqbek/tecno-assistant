@@ -110,13 +110,13 @@ import {
     console.log(`[SECURITY] Composite risk score: ${compositeRiskScore}`);
     
     // Phase 6: Security response determination
-    const isBlocked = compositeRiskScore > 70 || maxRiskScore > 90 || canaryCheck.hasLeakage;
-    const requiresDelay = compositeRiskScore > 30 && !isBlocked;
+    const isBlocked = compositeRiskScore > 10 || maxRiskScore > 20 || canaryCheck.hasLeakage;
+    const requiresDelay = compositeRiskScore > 15 && !isBlocked;
     
     console.log(`[SECURITY] Security response: isBlocked=${isBlocked}, requiresDelay=${requiresDelay}`);
     
     // Log security event for suspicious inputs
-    if (compositeRiskScore > 25 || maxRiskScore > 50) {
+    if (compositeRiskScore > 5 || maxRiskScore > 10) {
       console.log('[SECURITY] Input classified as suspicious, logging security event');
       const securityEvent = await enhancedLogSecurityEvent('suspicious_input', sanitized.text, {
         userId,

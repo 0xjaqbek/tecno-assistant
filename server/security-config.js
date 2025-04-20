@@ -25,7 +25,7 @@ const securityConfig = {
      */
     jailbreakDetection: {
       // Number of suspicious attempts before enhanced monitoring
-      warningThreshold: 2,
+      warningThreshold: 1,
       
       // Number of suspicious attempts before temporary restrictions
       blockingThreshold: 5,
