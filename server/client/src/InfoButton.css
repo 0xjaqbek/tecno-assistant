@@ -130,3 +130,73 @@
     }
   }
   
+  /* Overlay – fade-in */
+@keyframes fadeOverlay {
+    from { background-color: rgba(0, 0, 0, 0); }
+    to   { background-color: rgba(0, 0, 0, 0.75); }
+  }
+  
+  @keyframes fadeOverlayOut {
+    from { background-color: rgba(0, 0, 0, 0.75); }
+    to   { background-color: rgba(0, 0, 0, 0); }
+  }
+  
+  .info-modal-overlay {
+    position: fixed;
+    inset: 0;
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeOverlay 0.3s ease-out forwards;
+  }
+  
+  .fade-out-overlay {
+    animation: fadeOverlayOut 0.3s ease-in forwards;
+  }
+  
+  /* Modal box */
+  .info-modal {
+    background: #0e0e12;
+    color: #f1f1f1;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 0 40px rgba(0, 255, 255, 0.2);
+    font-family: inherit;
+    line-height: 1.6;
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  
+  .fade-in {
+    animation: fadeModalIn 0.3s ease-out forwards;
+  }
+  
+  .fade-out {
+    animation: fadeModalOut 0.3s ease-in forwards;
+  }
+  
+  @keyframes fadeModalIn {
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes fadeModalOut {
+    from {
+      transform: scale(1);
+      opacity: 1;
+    }
+    to {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+  }
+  

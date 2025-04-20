@@ -3,30 +3,46 @@ import ReactDOM from 'react-dom';
 import './InfoButton.css';
 
 const InfoButton = () => {
-  const [showModal, setShowModal] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const modalRef = useRef(null);
 
-  // Close on background click
+  // Obsługa kliknięcia poza modalem
   const handleClickOutside = (e) => {
     if (modalRef.current && !modalRef.current.contains(e.target)) {
-      setShowModal(false);
+      closeModal();
     }
   };
 
-  // Add/remove listener only when modal is shown
   useEffect(() => {
-    if (showModal) {
+    if (isVisible) {
       document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showModal]);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isVisible]);
+
+  const openModal = () => {
+    setIsVisible(true);
+    setIsClosing(false);
+  };
+
+  const closeModal = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      setIsClosing(false);
+    }, 300); // tyle samo co czas animacji
+  };
 
   const modal = (
-    <div className="info-modal-overlay">
-      <div className="info-modal fade-in" ref={modalRef}>
-        <button className="info-modal-close" onClick={() => setShowModal(false)}>×</button>
+    <div className={`info-modal-overlay ${isClosing ? 'fade-out-overlay' : ''}`}>
+      <div
+        className={`info-modal ${isClosing ? 'fade-out' : 'fade-in'}`}
+        ref={modalRef}
+      >
+        <button className="info-modal-close" onClick={closeModal}>×</button>
         <div className="info-modal-content">
           <h2>Projektor Snów</h2>
           <p><strong>Projektor Snów</strong> to tekstowa gra eksploracyjna, w której głównym narzędziem gracza jest rozmowa z zaawansowaną sztuczną inteligencją.</p>
@@ -44,13 +60,13 @@ const InfoButton = () => {
     <>
       <button
         className="ambient-button"
-        onClick={() => setShowModal(true)}
+        onClick={openModal}
         title="Informacje o grze"
       >
         ℹ️
       </button>
 
-      {showModal && ReactDOM.createPortal(modal, document.body)}
+      {isVisible && ReactDOM.createPortal(modal, document.body)}
     </>
   );
 };
