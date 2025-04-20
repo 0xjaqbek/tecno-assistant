@@ -30,7 +30,8 @@ export async function processChat(req, res) {
     
     // Używamy stałego identyfikatora sesji lub ID z sesji, aby utrzymać spójność konwersacji
     // Jeśli nie ma sesji, używamy IP z dodatkowym stałym prefiksem
-    const userId = req.session?.id || ('user-' + ip);
+
+    const userId = 'user-' + ip;
     
     console.log(`Processing chat request for userId: ${userId}`);
     
@@ -234,7 +235,7 @@ export async function processChat(req, res) {
 export async function getLastMessage(req, res) {
   try {
     const ip = req.ip || req.socket.remoteAddress;
-    const userId = req.session?.id || ('user-' + ip);
+    const userId = 'user-' + ip;
     
     // Pobierz aktywne konwersacje dla tego użytkownika
     const conversations = await conversationStore.getByUser(userId);
