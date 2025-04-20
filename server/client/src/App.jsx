@@ -209,15 +209,33 @@ const SpaceThemedChatApp = () => {
       }
 
       const data = await response.json();
-      const botMessage = {
-        text: data.response,
-        role: 'model',
-        timestamp: new Date().toISOString(),
-        id: `bot-${messageId}`
-      };
 
-      setDisplayMessages(prev => [...prev, botMessage]);
-      setMessages(prev => [...prev, botMessage]);
+      if (data.processing) {
+        const placeholderId = `bot-placeholder-${Date.now()}`;
+        const placeholderMessage = {
+          text: "MISTRZ GRY:\nPrzetwarzanie wiadomości zajmuje więcej czasu niż zwykle. Proszę czekać na odpowiedź...",
+          role: 'model',
+          timestamp: new Date().toISOString(),
+          id: placeholderId
+        };
+      
+        setDisplayMessages(prev => [...prev, placeholderMessage]);
+        setMessages(prev => [...prev, placeholderMessage]);
+        setTypingComplete(prev => ({ ...prev, [placeholderId]: true }));
+      
+        // Start polling for final response
+        pollForFinalResponse(placeholderId);
+      } else {
+        const botMessage = {
+          text: data.response,
+          role: 'model',
+          timestamp: new Date().toISOString(),
+          id: `bot-${messageId}`
+        };
+      
+        setDisplayMessages(prev => [...prev, botMessage]);
+        setMessages(prev => [...prev, botMessage]);
+      }
 
       // Play transmission sound after AI response
       const randomSound = new Audio(transmissionSounds[Math.floor(Math.random() * transmissionSounds.length)]);
@@ -234,6 +252,44 @@ const SpaceThemedChatApp = () => {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
+  };
+
+  const pollForFinalResponse = (placeholderId) => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/chat/last-message');
+        const data = await res.json();
+  
+        if (data.message) {
+          clearInterval(interval);
+          const finalMessage = {
+            text: data.message,
+            role: 'model',
+            timestamp: data.timestamp,
+            id: `bot-final-${Date.now()}`
+          };
+  
+          // Replace placeholder message with final one
+          setDisplayMessages(prev => {
+            const updated = [...prev];
+            const index = updated.findIndex(m => m.id === placeholderId);
+            if (index !== -1) {
+              updated[index] = finalMessage;
+            } else {
+              updated.push(finalMessage);
+            }
+            return updated;
+          });
+  
+          setMessages(prev => [...prev, finalMessage]);
+  
+          // Mark the new final message for typing effect
+          setTypingComplete(prev => ({...prev, [finalMessage.id]: false}));
+        }
+      } catch (err) {
+        console.warn("Polling failed:", err);
+      }
+    }, 5000); // every 5 seconds
   };
 
   const handleCancelRequest = () => {
