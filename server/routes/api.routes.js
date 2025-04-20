@@ -13,5 +13,6 @@ router.get('/simple-test', (req, res) => {
 
 // Chat endpoint with security filter
 router.post('/chat', detectUnauthorizedAdminTricks, processChat);
+router.get('/chat/last-message', getLastMessage);
 
 export default router;

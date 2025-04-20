@@ -20,6 +20,15 @@ const __dirname = path.dirname(__filename);
 // Create Express app
 const app = express();
 
+const session = require('express-session');
+
+app.use(session({
+  secret: 'moonstone-secret-key',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
+
 // Middleware setup
 app.use(cors());
 app.use(express.json({ limit: '1mb' })); // Limit payload size
