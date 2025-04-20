@@ -2,6 +2,7 @@
 import express from 'express';
 import { processChat } from '../controllers/chat.controller.js';
 import { detectUnauthorizedAdminTricks } from '../middleware/security.middleware.js';
+import { getLastMessage } from '../controllers/chat.controller.js';
 
 const router = express.Router();
 
