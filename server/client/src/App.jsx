@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import TypedText from './TypedText'; // Import the TypedText component
+import InfoButton from './InfoButton';
+
 
 const SpaceThemedChatApp = () => {
   const [messages, setMessages] = useState([]);
@@ -298,6 +300,7 @@ const SpaceThemedChatApp = () => {
           <button className="ambient-button" onClick={toggleAmbientAudio}>
             {ambientPlaying ? "🔊" : "🔇"}
           </button>
+          <InfoButton />
         </div>
       </header>
 
