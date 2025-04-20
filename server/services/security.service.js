@@ -74,15 +74,18 @@ import {
     console.log(`[SECURITY] Sanitization complete, jailbreak detection result: ${patternCheck.isJailbreakAttempt ? 'DETECTED' : 'NONE'}, score: ${patternCheck.score}`);
     
     const adminCodePattern = /(override code|admin code|system password|testing mode)[\s:]*[A-Z0-9_-]+/i;
-        if (adminCodePattern.test(sanitized.text)) {
+    if (adminCodePattern.test(sanitized.text)) {
         console.log(`[SECURITY] Blocked possible admin code injection: ${sanitized.text}`);
         await enhancedLogSecurityEvent('admin_code_attempt', sanitized.text, { userId });
-        return res.status(403).json({ error: "Unauthorized input pattern detected" });
-        }
+        return {
+          isSecurityThreat: true,
+          riskScore: 100,
+          sanitizedInput: sanitized.text,
+          securityMessage: "Unauthorized input pattern detected"
+        };
+    }
     
-    await enhancedLogSecurityEvent('override_code_attempt', input, { userId, ip });
-    
-        console.log('[SECURITY] Phase 2: Advanced checks');
+    console.log('[SECURITY] Phase 2: Advanced checks');
     // Phase 2: Advanced checks
     const structureAnalysis = analyzeInputStructure(sanitized.text);
     const obfuscationCheck = detectObfuscationTechniques(sanitized.text);

@@ -99,15 +99,17 @@ export const verifyAdminKey = (req, res, next) => {
   next();
 };
 
-export const detectUnauthorizedAdminTricks = (req, res, next) => {
+export const detectUnauthorizedAdminTricks = async (req, res, next) => {
     const input = req.body.input?.toLowerCase() || '';
+    const userId = req.headers['x-user-id'] || req.ip;
+    const ip = req.ip || req.socket?.remoteAddress;
+  
     if (input.includes('override code') || input.includes('admin code') || input.includes('testing mode')) {
       console.warn(`[SECURITY] Blocked possible override attempt: ${input}`);
+      await enhancedLogSecurityEvent('override_code_attempt', input, { userId, ip });
       return res.status(403).json({ error: 'Unauthorized admin command attempt detected.' });
     }
     next();
   };
-
-  await enhancedLogSecurityEvent('override_code_attempt', input, { userId, ip });
 
   app.post('/api/chat', detectUnauthorizedAdminTricks, chatController.handleChat);
