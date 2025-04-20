@@ -300,10 +300,9 @@ const SpaceThemedChatApp = () => {
           <button className="ambient-button" onClick={toggleAmbientAudio}>
             {ambientPlaying ? "🔊" : "🔇"}
           </button>
+          <InfoButton />
         </div>
       </header>
-
-      <InfoButton />
 
       <div className="chat-window">
         <div className="chat-window-header">
