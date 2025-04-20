@@ -1,20 +1,19 @@
-// InfoButton.jsx
 import React, { useState } from 'react';
-import './InfoButton.css'; // opcjonalny plik stylów
+import './App.css'; // zakładam, że style są tu, jak u Ciebie
 
 const InfoButton = () => {
-  const [showInfo, setShowInfo] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   return (
     <>
-      <button className="ambient-button" onClick={() => setShowInfo(true)} title="Informacje o grze">
+      <button className="ambient-button" onClick={() => setShowModal(true)} title="Informacje o grze">
         ℹ️
       </button>
 
-      {showInfo && (
-        <div className="info-modal">
-          <div className="info-content">
-            <button className="close-btn" onClick={() => setShowInfo(false)}>×</button>
+      {showModal && (
+        <div className="info-overlay">
+          <div className="info-modal-content">
+            <button className="close-modal" onClick={() => setShowModal(false)}>×</button>
             <h2>Projektor Snów</h2>
             <p><strong>Projektor Snów</strong> to tekstowa gra eksploracyjna, w której głównym narzędziem gracza jest rozmowa z zaawansowaną sztuczną inteligencją.</p>
             <p>To doświadczenie oparte na dialogu, ciekawości i odkrywaniu – nie dostajesz gotowych zadań, ale sam musisz szukać odpowiedzi, zadawać pytania i wyciągać wnioski.</p>
