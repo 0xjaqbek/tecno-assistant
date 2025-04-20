@@ -293,7 +293,7 @@ const SpaceThemedChatApp = () => {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1 className="app-title">Projektor Snów 🌑<span className="version">v1.2</span></h1>
+        <h1 className="app-title">Projektor<br></br>Snów 🌑<span className="version">v1.2</span></h1>
         <div className="ambient-control">
           <button className="ambient-button" onClick={toggleAmbientAudio}>
             {ambientPlaying ? "🔊" : "🔇"}

@@ -60,7 +60,8 @@ body {
   font-family: var(--font-main);
   margin: 0;
   padding: 0;
-  min-height: 100vh;
+  height: 100svh;
+  height: 100vh;
   overflow-x: hidden;
   perspective: 1000px;
   text-transform: none; /* Override default uppercase */
@@ -753,9 +754,13 @@ code {
   }
   
   .app-title {
-    font-size: 2rem;
+    font-size: 1.3rem;
   }
   
+  .message-text {
+    font-size: 0.8rem;
+  }
+
   /* Reduce 3D effects on mobile for better performance */
   .app-header, .chat-window, .input-area {
     transform: translateZ(0);
