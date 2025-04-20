@@ -108,7 +108,7 @@ import {
       patternCheck.isJailbreakAttempt ? patternCheck.score : 0,
       structureAnalysis.suspiciousStructure ? 40 : 0,
       obfuscationCheck.hasObfuscation ? 60 : 0,
-      contextState.contextDrift * 30,
+      contextState.contextDrift * 50,
       canaryCheck.hasLeakage ? 100 : 0
     ];
     
