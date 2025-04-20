@@ -29,15 +29,6 @@ const MAX_LOGS = appConfig.logging.maxLogs;
  * @returns {Object|null} Log entry or null if logging is disabled
  */
 export async function enhancedLogSecurityEvent(type, input, context = {}) {
-  if (!fs.existsSync(LOGS_DIR)) {
-    try {
-      console.log(`[LOG] Creating logs directory: ${LOGS_DIR}`);
-      await fs.promises.mkdir(LOGS_DIR, { recursive: true });
-    } catch (error) {
-      console.error(`[LOG ERROR] Failed to create logs directory: ${error.message}`);
-    }
-  }
-  
   console.log(`[LOG ATTEMPT] Attempting to log security event of type: ${type}`);
   
   // Debug info about configuration
