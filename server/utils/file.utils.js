@@ -25,17 +25,24 @@ const SECURITY_LOGS_FILE = path.join(LOGS_DIR, appConfig.paths.securityLogsFile)
 export async function initLogsDirectory() {
   try {
     // Create logs directory if it doesn't exist
-    console.log(`Checking if logs directory exists: ${LOGS_DIR}`);
+    console.log(`[LOGS] Checking logs directory: ${LOGS_DIR}`);
     if (!fs.existsSync(LOGS_DIR)) {
-      console.log('Creating logs directory');
-      await mkdirAsync(LOGS_DIR, { recursive: true });
-      console.log('Logs directory created successfully');
-    } else {
-      console.log('Logs directory already exists');
+      console.log('[LOGS] Directory does not exist, creating...');
+      await fs.promises.mkdir(LOGS_DIR, { recursive: true });
+      console.log(`[LOGS] Successfully created directory at: ${LOGS_DIR}`);
     }
-    return true;
+    
+    // Sprawdź uprawnienia do zapisu
+    try {
+      fs.accessSync(LOGS_DIR, fs.constants.W_OK);
+      console.log('[LOGS] Directory is writable');
+      return true;
+    } catch (error) {
+      console.error(`[LOGS] Permission error: ${error.message}`);
+      return false;
+    }
   } catch (error) {
-    console.error('Error creating logs directory:', error);
+    console.error(`[LOGS] Error initializing logs directory: ${error.message}`);
     return false;
   }
 }

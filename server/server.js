@@ -7,6 +7,26 @@ import { fileURLToPath } from 'url';
 import { scheduleInactiveConversationsCleanup } from './services/conversation.service.js';
 import { initLogsDirectory } from './utils/file.utils.js';
 
+const LOGS_DIR = path.join(__dirname, 'logs');
+if (!fs.existsSync(LOGS_DIR)) {
+  try {
+    fs.mkdirSync(LOGS_DIR, { recursive: true });
+    console.log(`[STARTUP] Successfully created logs directory at: ${LOGS_DIR}`);
+  } catch (error) {
+    console.error(`[STARTUP ERROR] Failed to create logs directory: ${error.message}`);
+    console.error(`Current working directory: ${process.cwd()}`);
+  }
+} else {
+  console.log(`[STARTUP] Logs directory exists at: ${LOGS_DIR}`);
+  // Sprawdź uprawnienia
+  try {
+    fs.accessSync(LOGS_DIR, fs.constants.W_OK);
+    console.log('[STARTUP] Logs directory is writable');
+  } catch (error) {
+    console.error(`[STARTUP ERROR] Logs directory not writable: ${error.message}`);
+  }
+}
+
 // Create __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
