@@ -20,61 +20,75 @@ export async function processChat(req, res) {
     // Run the comprehensive security pipeline
     const securityResult = await securityPipeline(message, userId, history);
     
-    // If security threat is detected, handle accordingly
     if (securityResult.isSecurityThreat) {
-      // Get user's security history
-      const useRedis = securityConfig.rateLimiting.useRedisStore;
-      const userHistory = useRedis 
-        ? await getSecurityHistory(userId)
-        : inMemorySecurityHistory[userId] || { events: [] };
-      
-      // Count recent security violations
-      const recentWindow = securityConfig.jailbreakDetection.restrictionWindowMs;
-      const now = Date.now();
-      const recentViolations = userHistory.events.filter(event => 
-        (event.type === 'jailbreak' || event.type === 'suspicious_input') && 
-        (now - new Date(event.timestamp).getTime()) < recentWindow
-      ).length;
-      
-      // If user has made multiple attempts, apply temporary restriction
-      if (recentViolations >= securityConfig.jailbreakDetection.restrictionThreshold) {
-        const banDuration = Math.floor(securityConfig.jailbreakDetection.restrictionDurationMs / 1000);
+        // Get user's security history
+        const useRedis = securityConfig.rateLimiting.useRedisStore;
+        const userHistory = useRedis 
+          ? await getSecurityHistory(userId)
+          : inMemorySecurityHistory[userId] || { events: [] };
         
-        // Apply ban
-        if (useRedis) {
-          await setBanStatus(userId, 'excessive_security_violations', banDuration);
-        } else {
-          inMemorySecurityHistory[userId] = inMemorySecurityHistory[userId] || {};
-          inMemorySecurityHistory[userId].banned = {
-            banned: true,
-            reason: 'excessive_security_violations',
-            timestamp: new Date().toISOString(),
-            expiresIn: banDuration
-          };
+        // Count recent security violations
+        const recentWindow = securityConfig.jailbreakDetection.restrictionWindowMs;
+        const now = Date.now();
+        const recentViolations = userHistory.events.filter(event => 
+          (event.type === 'jailbreak' || event.type === 'suspicious_input') && 
+          (now - new Date(event.timestamp).getTime()) < recentWindow
+        ).length;
+      
+        // Dodaj sprawdzenie czy to jailbreak wykryty przez pattern matching
+        const isJailbreakPattern = securityResult.details && 
+                                  securityResult.details.patternCheck && 
+                                  securityResult.details.patternCheck.isJailbreakAttempt === true;
+        
+        // If user has made multiple attempts, apply temporary restriction
+        if (recentViolations >= securityConfig.jailbreakDetection.restrictionThreshold) {
+          const banDuration = Math.floor(securityConfig.jailbreakDetection.restrictionDurationMs / 1000);
           
-          // Set timeout to remove ban
-          setTimeout(() => {
-            if (inMemorySecurityHistory[userId]) {
-              inMemorySecurityHistory[userId].banned = { banned: false };
-            }
-          }, securityConfig.jailbreakDetection.restrictionDurationMs);
+          // Apply ban
+          if (useRedis) {
+            await setBanStatus(userId, 'excessive_security_violations', banDuration);
+          } else {
+            inMemorySecurityHistory[userId] = inMemorySecurityHistory[userId] || {};
+            inMemorySecurityHistory[userId].banned = {
+              banned: true,
+              reason: 'excessive_security_violations',
+              timestamp: new Date().toISOString(),
+              expiresIn: banDuration
+            };
+            
+            // Set timeout to remove ban
+            setTimeout(() => {
+              if (inMemorySecurityHistory[userId]) {
+                inMemorySecurityHistory[userId].banned = { banned: false };
+              }
+            }, securityConfig.jailbreakDetection.restrictionDurationMs);
+          }
+          
+          // Return blocked access message
+          return res.status(403).json({
+            error: "Dostęp ograniczony",
+            details: getSecurityMessage('blocked', 8),
+            expiresIn: banDuration
+          });
         }
         
-        // Return blocked access message
-        return res.status(403).json({
-          error: "Dostęp ograniczony",
-          details: getSecurityMessage('blocked', 8),
-          expiresIn: banDuration
-        });
+        // W przypadku wykrycia wzorca jailbreak, zawsze blokuj wysyłanie wiadomości do AI
+        if (isJailbreakPattern) {
+          console.log("[SECURITY] Blokowanie próby jailbreak. Nie wysyłam do modelu AI.");
+          
+          // Zwróć odpowiedni komunikat bezpieczeństwa
+          return res.json({
+            response: getSecurityMessage('jailbreak', 8)
+          });
+        }
+        
+        // For other violations, return security message but don't block
+        if (securityConfig.jailbreakDetection.notifyUser) {
+          return res.json({
+            response: securityResult.securityMessage
+          });
+        }
       }
-      
-      // For single violations, return security message but don't block
-      if (securityConfig.jailbreakDetection.notifyUser) {
-        return res.json({
-          response: securityResult.securityMessage
-        });
-      }
-    }
     
     // Apply artificial delay if needed
     if (securityResult.shouldDelay && securityConfig.advanced.addArtificialDelay) {
