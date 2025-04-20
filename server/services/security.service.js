@@ -110,7 +110,7 @@ import {
     console.log(`[SECURITY] Composite risk score: ${compositeRiskScore}`);
     
     // Phase 6: Security response determination
-    const isBlocked = compositeRiskScore > 10 || maxRiskScore > 20 || canaryCheck.hasLeakage;
+    const isBlocked = compositeRiskScore > 3 || maxRiskScore > 10 || canaryCheck.hasLeakage;
     const requiresDelay = compositeRiskScore > 15 && !isBlocked;
     
     console.log(`[SECURITY] Security response: isBlocked=${isBlocked}, requiresDelay=${requiresDelay}`);
