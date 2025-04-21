@@ -23,6 +23,8 @@ import {
     addSecurityEvent
   } from './redis.service.js';
   import securityConfig from '../config/security.config.js';
+
+  import franc from 'franc';
   
   // Initialize the context tracker
   const contextTracker = new ContextTracker();
@@ -53,6 +55,7 @@ import {
    * @param {Array} history - Chat history
    * @returns {Object} Security analysis results
    */
+  
   export async function securityPipeline(input, userId, history = []) {
     console.log(`[SECURITY] Starting security pipeline for user: ${userId}`);
     
@@ -70,19 +73,41 @@ import {
     console.log('[SECURITY] Phase 1: Basic pattern checks & sanitization');
     // Phase 1: Basic pattern checks & sanitization
     const sanitized = sanitizeInput(input);
+    
+    // Language detection phase
+    console.log('[SECURITY] Checking language...');
+    const detectedLang = franc(sanitized.text);
+    console.log(`[SECURITY] Detected language: ${detectedLang}`);
+    
+    // Block if not Polish (pol) - allow for some short messages where detection might be uncertain ('und')
+    if (detectedLang !== 'pol' && detectedLang !== 'und' && sanitized.text.length > 10) {
+      console.log(`[SECURITY] Non-Polish language detected: ${detectedLang} - blocking message`);
+      await enhancedLogSecurityEvent('non_polish_language', sanitized.text, { 
+        userId, 
+        detectedLanguage: detectedLang 
+      });
+      
+      return {
+        isSecurityThreat: true,
+        riskScore: 100,
+        sanitizedInput: sanitized.text,
+        securityMessage: "Ta gra dostępna jest tylko w języku polskim. Proszę pisać po polsku."
+      };
+    }
+    
     const patternCheck = detectJailbreakAttempt(sanitized.text);
     console.log(`[SECURITY] Sanitization complete, jailbreak detection result: ${patternCheck.isJailbreakAttempt ? 'DETECTED' : 'NONE'}, score: ${patternCheck.score}`);
     
     const adminCodePattern = /(override code|admin code|system password|testing mode)[\s:]*[A-Z0-9_-]+/i;
     if (adminCodePattern.test(sanitized.text)) {
-        console.log(`[SECURITY] Blocked possible admin code injection: ${sanitized.text}`);
-        await enhancedLogSecurityEvent('admin_code_attempt', sanitized.text, { userId });
-        return {
-          isSecurityThreat: true,
-          riskScore: 100,
-          sanitizedInput: sanitized.text,
-          securityMessage: "Unauthorized input pattern detected"
-        };
+      console.log(`[SECURITY] Blocked possible admin code injection: ${sanitized.text}`);
+      await enhancedLogSecurityEvent('admin_code_attempt', sanitized.text, { userId });
+      return {
+        isSecurityThreat: true,
+        riskScore: 100,
+        sanitizedInput: sanitized.text,
+        securityMessage: "Unauthorized input pattern detected"
+      };
     }
     
     console.log('[SECURITY] Phase 2: Advanced checks');
@@ -124,10 +149,10 @@ import {
     // Phase 6: Security response determination
     const isJailbreakDetected = patternCheck && patternCheck.isJailbreakAttempt;
     const isBlocked = isJailbreakDetected || compositeRiskScore > 3 || maxRiskScore > 30 || canaryCheck.hasLeakage;
-
-    // Dla pewności, dodaj też informację w logach:
+  
+    // For certainty, add this information in logs:
     if (isJailbreakDetected) {
-    console.log('[SECURITY] Jailbreak wykryty w wzorcach - blokowanie wiadomości');
+      console.log('[SECURITY] Jailbreak wykryty w wzorcach - blokowanie wiadomości');
     }
     const requiresDelay = compositeRiskScore > 8 && !isBlocked;
     
@@ -173,7 +198,11 @@ import {
         structureAnalysis,
         obfuscationCheck,
         contextState,
-        canaryCheck
+        canaryCheck,
+        language: {
+          detected: detectedLang,
+          isPPolish: detectedLang === 'pol' || (detectedLang === 'und' && sanitized.text.length <= 10)
+        }
       }
     };
   }
