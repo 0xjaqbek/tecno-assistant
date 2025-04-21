@@ -106,6 +106,13 @@ const SpaceThemedChatApp = () => {
   useEffect(() => inputRef.current?.focus(), []);
   useEffect(() => () => abortControllerRef.current?.abort(), []);
 
+  useEffect(() => {
+    // Scroll down when errors or warnings appear
+    if (error || warningMessage) {
+      scrollToBottom();
+    }
+  }, [error, warningMessage]);
+
   // Function to check input for jailbreak patterns
   const checkForJailbreakPatterns = (input) => {
     if (!input) return false;
@@ -390,8 +397,8 @@ const SpaceThemedChatApp = () => {
               </div>
             </div>
           )}
-          {error && <div className="error-message">{error}</div>}
-          {warningMessage && <div className="error-message">{warningMessage}</div>}
+          {error && <div className="error-message" id="error-message">{error}</div>}
+          {warningMessage && <div className="error-message" id="warning-message">{warningMessage}</div>}
           <div ref={messagesEndRef} style={{ float: 'left', clear: 'both' }}></div>
         </div>
       </div>
