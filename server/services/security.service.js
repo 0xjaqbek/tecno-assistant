@@ -123,18 +123,18 @@ import {
     
     // Phase 6: Security response determination
     const isJailbreakDetected = patternCheck && patternCheck.isJailbreakAttempt;
-    const isBlocked = isJailbreakDetected || compositeRiskScore > 7 || maxRiskScore > 10 || canaryCheck.hasLeakage;
+    const isBlocked = isJailbreakDetected || compositeRiskScore > 3 || maxRiskScore > 30 || canaryCheck.hasLeakage;
 
     // Dla pewności, dodaj też informację w logach:
     if (isJailbreakDetected) {
     console.log('[SECURITY] Jailbreak wykryty w wzorcach - blokowanie wiadomości');
     }
-    const requiresDelay = compositeRiskScore > 15 && !isBlocked;
+    const requiresDelay = compositeRiskScore > 8 && !isBlocked;
     
     console.log(`[SECURITY] Security response: isBlocked=${isBlocked}, requiresDelay=${requiresDelay}`);
     
     // Log security event for suspicious inputs
-    if (compositeRiskScore > 5 || maxRiskScore > 10) {
+    if (compositeRiskScore > 3 || maxRiskScore > 30) {
       console.log('[SECURITY] Input classified as suspicious, logging security event');
       const securityEvent = await enhancedLogSecurityEvent('suspicious_input', sanitized.text, {
         userId,
