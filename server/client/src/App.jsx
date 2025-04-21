@@ -366,8 +366,6 @@ const SpaceThemedChatApp = () => {
         </div>
 
         <div className="chat-content" ref={chatContentRef}>
-          {error && <div className="error-message">{error}</div>}
-          {warningMessage && <div className="error-message">{warningMessage}</div>}
           {displayMessages.map((message, index) => (
             <div key={index} className={`message ${message.role === 'user' ? 'user-message' : 'bot-message'}`}>
               <div className="message-prompt">
@@ -392,6 +390,8 @@ const SpaceThemedChatApp = () => {
               </div>
             </div>
           )}
+          {error && <div className="error-message">{error}</div>}
+          {warningMessage && <div className="error-message">{warningMessage}</div>}
           <div ref={messagesEndRef} style={{ float: 'left', clear: 'both' }}></div>
         </div>
       </div>
