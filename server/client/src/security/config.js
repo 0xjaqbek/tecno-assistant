@@ -197,7 +197,7 @@ const getEnvironment = () => {
     
     // Ensure jailbreak detection thresholds are within range
     if (validated.jailbreakDetection.threshold < 0 || validated.jailbreakDetection.threshold > 100) {
-      validated.jailbreakDetection.threshold = 15;
+      validated.jailbreakDetection.threshold = 5;
     }
     if (validated.jailbreakDetection.warningThreshold < 1) {
       validated.jailbreakDetection.warningThreshold = 1;

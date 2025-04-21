@@ -123,7 +123,7 @@ import {
     
     // Phase 6: Security response determination
     const isJailbreakDetected = patternCheck && patternCheck.isJailbreakAttempt;
-    const isBlocked = isJailbreakDetected || compositeRiskScore > 15 || maxRiskScore > 50 || canaryCheck.hasLeakage;
+    const isBlocked = isJailbreakDetected || compositeRiskScore > 7 || maxRiskScore > 10 || canaryCheck.hasLeakage;
 
     // Dla pewności, dodaj też informację w logach:
     if (isJailbreakDetected) {
