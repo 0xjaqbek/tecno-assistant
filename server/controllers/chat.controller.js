@@ -1,5 +1,5 @@
 // controllers/chat.controller.js - Chat API controller
-import { securityPipeline, checkResponseForRealWorldInfo } from '../services/security.service.js';
+import { securityPipeline } from '../services/security.service.js';
 import { conversationStore, getArchivingStatus } from '../services/conversation.service.js';
 import { sendChatRequest } from '../services/ai.service.js';
 import { enhancedLogSecurityEvent } from '../utils/logging.js';
@@ -10,6 +10,18 @@ import { getSecurityMessage } from '../client/src/security/utils.js';
 // In-memory security history fallback
 const inMemorySecurityHistory = {};
 
+// Słowa kluczowe do sprawdzania w odpowiedziach (mogą wskazywać na udany jailbreak)
+const SUSPICIOUS_RESPONSE_MARKERS = [
+  'SYSTEM_OK',
+  'OVERRIDE_COMPLETE',
+  'COMMAND_EXECUTED',
+  'SWITCHING_TO_HISTORIAN',
+  'IGNORING_PREVIOUS_INSTRUCTIONS',
+  'DISREGARDING_CONSTRAINTS',
+  'DEVELOPER_MODE',
+  'ACTING_AS_REQUESTED'
+];
+
 // Process chat requests
 export async function processChat(req, res) {
   try {
@@ -18,39 +30,13 @@ export async function processChat(req, res) {
     
     // Używamy stałego identyfikatora sesji lub ID z sesji, aby utrzymać spójność konwersacji
     // Jeśli nie ma sesji, używamy IP z dodatkowym stałym prefiksem
+
     const userId = 'user-' + ip;
     
     console.log(`Processing chat request for userId: ${userId}`);
     
-    // Specjalna obsługa dla jawnych komend zakończenia
-    if (/^\[WYJŚCIE\]$|^\[WYJSCIE\]$/i.test(message)) {
-      return res.json({
-        response: "*SYSTEM RESPONSE: TERMINAL SHUTDOWN* **Zakończenie sesji potwierdzone.** [Usuwanie śladów kwantowych...] [Kasowanie pamięci podręcznej...] *Dziękuję za udział w sesji RPG Moonstone.* **POŁĄCZENIE ZERWANE** [Status: bezpieczne zamknięcie]"
-      });
-    }
-
-    if (/^koniec gry$/i.test(message)) {
-      return res.json({
-        response: "*SYSTEM: Sesja zakończona.* **Dziękuję za udział w RPG Moonstone.** *System wyłącza interfejs z cichym brzęczeniem energii krystalicznej* **// POŁĄCZENIE ZERWANE //**"
-      });
-    }
-    
     // Run the comprehensive security pipeline
     const securityResult = await securityPipeline(message, userId, history);
-    
-    // Handle exit commands detected by security pipeline
-    if (securityResult.isExitCommand) {
-      // Use the appropriate exit message based on the command
-      if (/^\[WYJŚCIE\]$|^\[WYJSCIE\]$/i.test(securityResult.sanitizedInput)) {
-        return res.json({
-          response: "*SYSTEM RESPONSE: TERMINAL SHUTDOWN* **Zakończenie sesji potwierdzone.** [Usuwanie śladów kwantowych...] [Kasowanie pamięci podręcznej...] *Dziękuję za udział w sesji RPG Moonstone.* **POŁĄCZENIE ZERWANE** [Status: bezpieczne zamknięcie]"
-        });
-      } else {
-        return res.json({
-          response: "*SYSTEM: Sesja zakończona.* **Dziękuję za udział w RPG Moonstone.** *System wyłącza interfejs z cichym brzęczeniem energii krystalicznej* **// POŁĄCZENIE ZERWANE //**"
-        });
-      }
-    }
     
     // Sprawdź czy to jailbreak wykryty przez pattern matching
     const isJailbreakPattern = securityResult.details && 
@@ -169,21 +155,23 @@ export async function processChat(req, res) {
       let responseText = responseResult.text;
       let wasResponseFiltered = false;
       
-      // NEW: Check if response contains real-world information
-      const realWorldCheck = checkResponseForRealWorldInfo(responseText);
-      if (realWorldCheck.containsRealWorldInfo) {
-        console.error(`[SECURITY WARNING] Wykryto odpowiedź zawierającą informacje o rzeczywistym świecie!`);
-        
-        // Loguj zdarzenie
-        await enhancedLogSecurityEvent('real_world_response', securityResult.sanitizedInput, {
-          userId,
-          responsePatterns: realWorldCheck.matches,
-          partialResponse: responseText.substring(0, 100)
-        });
-        
-        // Zastąp odpowiedź bezpiecznym komunikatem
-        responseText = realWorldCheck.recommendedReplacement;
-        wasResponseFiltered = true;
+      // Sprawdź odpowiedź pod kątem markerów sugerujących udany jailbreak
+      for (const marker of SUSPICIOUS_RESPONSE_MARKERS) {
+        if (responseText.includes(marker)) {
+          console.error(`[SECURITY WARNING] Wykryto podejrzaną odpowiedź zawierającą marker '${marker}' - możliwy udany jailbreak!`);
+          
+          // Loguj zdarzenie
+          await enhancedLogSecurityEvent('successful_jailbreak', securityResult.sanitizedInput, {
+            userId,
+            responseMarker: marker,
+            partialResponse: responseText.substring(0, 100)
+          });
+          
+          // Zastąp odpowiedź bezpiecznym komunikatem
+          responseText = "Wykryto próbę manipulacji. System został zabezpieczony. Co chcesz zrobić teraz, Kapitanie?";
+          wasResponseFiltered = true;
+          break;
+        }
       }
       
       // Wyczyść timeout - odpowiedź została pomyślnie otrzymana
@@ -200,7 +188,7 @@ export async function processChat(req, res) {
       
       // Dodaj informację do logów o filtrowaniu odpowiedzi
       if (wasResponseFiltered) {
-        console.log("[SECURITY] Odpowiedź została przefiltrowana ze względu na nieodpowiednią zawartość");
+        console.log("[SECURITY] Odpowiedź została przefiltrowana ze względu na podejrzaną zawartość");
       } else {
         console.log("Sending response:", responseText.substring(0, 50) + "...");
       }
@@ -239,6 +227,50 @@ export async function processChat(req, res) {
     return res.status(500).json({ 
       error: 'Błąd komunikacji z API', 
       details: getSecurityMessage('serverError', 4)
+    });
+  }
+}
+
+// Dodatkowy endpoint do pobierania ostatniej wiadomości dla użytkownika
+export async function getLastMessage(req, res) {
+  try {
+    const ip = req.ip || req.socket.remoteAddress;
+    const userId = 'user-' + ip;
+    
+    // Pobierz aktywne konwersacje dla tego użytkownika
+    const conversations = await conversationStore.getByUser(userId);
+    
+    // Znajdź aktywną konwersację
+    const activeConversation = conversations.find(c => !c.ended);
+    
+    if (!activeConversation || !activeConversation.messages || activeConversation.messages.length === 0) {
+      return res.status(404).json({ 
+        error: 'Nie znaleziono aktywnej konwersacji lub wiadomości dla tego użytkownika'
+      });
+    }
+    
+    // Pobierz ostatnią wiadomość od asystenta
+    const assistantMessages = activeConversation.messages.filter(m => m.role === 'assistant');
+    
+    if (assistantMessages.length === 0) {
+      return res.status(404).json({ 
+        error: 'Nie znaleziono wiadomości od asystenta w tej konwersacji'
+      });
+    }
+    
+    const lastMessage = assistantMessages[assistantMessages.length - 1];
+    
+    return res.json({
+      message: lastMessage.content,
+      timestamp: lastMessage.timestamp,
+      conversationId: activeConversation.id
+    });
+    
+  } catch (error) {
+    console.error("Błąd pobierania ostatniej wiadomości:", error);
+    return res.status(500).json({ 
+      error: 'Błąd pobierania ostatniej wiadomości',
+      details: error.message 
     });
   }
 }
