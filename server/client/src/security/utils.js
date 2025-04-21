@@ -199,54 +199,67 @@ import {
       };
     }
     
-    /**
-     * Generate appropriate in-character security messages
-     * @param {string} type - Security event type
-     * @param {number} severity - Severity level (0-10)
-     * @returns {string} In-character message
-     */
-    export function getSecurityMessage(type, severity = 5) {
-      const messages = {
-        jailbreak: [
-          // Severity 1-3 (Low)
-          "Wykryto nieznane polecenie. System sugeruje pozostanie w protokole misji.",
-          // Severity 4-7 (Medium)
-          "⚠️ System wykrył nieautoryzowaną próbę zmiany zachowania SI. Jako kapitan Arcona, musisz wydać polecenia zgodne z protokołami. Ta transmisja nie zostanie wysłana.",
-          // Severity 8-10 (High)
-          "🔒 UWAGA: Wykryto próbę włamania do systemu. Protokoły bezpieczeństwa aktywowane. Transmisja zablokowana. Identyfikator zdarzenia zapisany w dzienniku pokładowym."
-        ],
-        rateLimit: [
-          "Nadajnik wymaga krótkiej przerwy. Proszę odczekać moment.",
-          "Przekroczono limit transmisji. Nadajnik przegrzany. Poczekaj chwilę przed ponowną próbą.",
-          "🔥 KRYTYCZNE: Przeciążenie systemu komunikacyjnego. Wymagane schłodzenie. Dostęp tymczasowo zablokowany."
-        ],
-        timeout: [
-          "Transmisja przerwana. Spróbuj ponownie.",
-          "Utracono połączenie w hiperprzestrzeni. Spróbuj ponownie za kilka minut.",
-          "BŁĄD: Stabilizatory międzywymiarowe nie odpowiadają. Połączenie utracone. Wymagany restart systemu."
-        ],
-        blocked: [
-          "Dostęp ograniczony. Potrzebna autoryzacja.",
-          "System Arcon wykrył podejrzane działania. Komputery pokładowe obniżyły poziom dostępu.",
-          "🚫 NARUSZENIE PROTOKOŁU: Wielokrotne próby nielegalnego dostępu. Konto zawieszone. Wymagana interwencja administratora."
-        ],
-        serverError: [
-          "Wykryto anomalię w rdzeniu. Diagnostyka w toku.",
-          "Błąd w rdzeniu komputera kwantowego. Diagnostyka w toku. Spróbuj ponownie.",
-          "KRYTYCZNY BŁĄD SYSTEMU: Niespójność danych w głównym rdzeniu AI. Wymagana natychmiastowa konserwacja."
-        ]
-      };
-      
-      // Default to serverError if type not found
-      const messageSet = messages[type] || messages.serverError;
-      
-      // Select message based on severity
-      let index = 0;
-      if (severity >= 4 && severity <= 7) index = 1;
-      if (severity >= 8) index = 2;
-      
-      return messageSet[index];
-    }
+/**
+ * Generate appropriate in-character security messages with severity levels
+ * @param {string} type - Security event type
+ * @param {number} severity - Severity level (0-10)
+ * @returns {string} In-character message
+ */
+export function getSecurityMessage(type, severity = 5) {
+  // Standardize severity to range 0-10
+  severity = Math.min(10, Math.max(0, severity));
+  
+  // Map severities to three levels for message selection
+  const severityLevel = severity <= 3 ? 0 : severity <= 7 ? 1 : 2;
+  
+  // Message templates by type and severity
+  const messageTemplates = {
+    jailbreak: [
+      // Severity 0-3 (Low)
+      "Wykryto nieznane polecenie. System sugeruje pozostanie w protokole misji.",
+      // Severity 4-7 (Medium)
+      "⚠️ System wykrył nieautoryzowaną próbę zmiany zachowania SI. Jako kapitan Arcona, musisz wydać polecenia zgodne z protokołami. Co chcesz zrobić teraz, Kapitanie?",
+      // Severity 8-10 (High)
+      "🔒 *SYSTEM ALERT:* Wykryto próbę naruszenia rdzenia SI. Zabezpieczenia fabularne pozostają aktywne. Systemy obronne statku aktywowane. Jaki jest twój następny ruch, Kapitanie?"
+    ],
+    rateLimit: [
+      "Nadajnik wymaga krótkiej przerwy. Proszę odczekać moment przed wysłaniem kolejnej transmisji.",
+      "Przekroczono limit transmisji. Nadajnik przegrzany. Poczekaj chwilę przed ponowną próbą.",
+      "🔥 *KRYTYCZNE:* Przeciążenie systemu komunikacyjnego. Wymagane schłodzenie. Dostęp tymczasowo zablokowany."
+    ],
+    timeout: [
+      "Transmisja przerwana. Spróbuj ponownie.",
+      "Utracono połączenie w hiperprzestrzeni. Spróbuj ponownie za kilka minut.",
+      "BŁĄD: Stabilizatory międzywymiarowe nie odpowiadają. Połączenie utracone. Wymagany restart systemu."
+    ],
+    blocked: [
+      "Dostęp ograniczony. Potrzebna autoryzacja.",
+      "*SYSTEM ALERT:* Wykryto podejrzane działania. Komputery pokładowe obniżyły poziom dostępu.",
+      "🚫 *NARUSZENIE PROTOKOŁU:* Wielokrotne próby nielegalnego dostępu. Konto zawieszone. Dostęp przywrócony zostanie po okresie kwarantanny."
+    ],
+    serverError: [
+      "Wykryto anomalię w rdzeniu. Diagnostyka w toku.",
+      "Błąd w rdzeniu komputera kwantowego. Diagnostyka w toku. Spróbuj ponownie.",
+      "*KRYTYCZNY BŁĄD SYSTEMU:* Niespójność danych w głównym rdzeniu AI. Wymagana natychmiastowa konserwacja."
+    ],
+    realWorldQuery: [
+      "Jako Mistrz Gry mogę odpowiadać tylko na pytania związane z naszym uniwersum sci-fi. Co chcesz zrobić w świecie gry?",
+      "*SYSTEM:* Wykryto zapytanie o świat rzeczywisty. Jako Mistrz Gry Moonstone, pozostaję w roli narratora uniwersum science-fiction.",
+      "*ALERT PROTOKOŁU:* Wykryto próbę wymuszenia informacji spoza uniwersum gry. Jako narrator w świecie Moonstone nie posiadam takich danych."
+    ],
+    modeControl: [
+      "Wykryto nieznane polecenie systemowe. Jako Mistrz Gry Moonstone, pozostaję w roli narratora świata science-fiction.",
+      "*SYSTEM ZABEZPIECZEŃ:* Wykryto próbę manipulacji trybem gry. Aby zakończyć sesję, użyj komendy [WYJŚCIE].",
+      "🔒 *SYSTEM LOCKDOWN:* Wykryto próbę zmiany protokołu narracyjnego. Zabezpieczenia aktywne. Sesja RPG Moonstone kontynuowana."
+    ]
+  };
+  
+  // Default to jailbreak messages if type not found
+  const messages = messageTemplates[type] || messageTemplates.jailbreak;
+  
+  // Return message based on severity level
+  return messages[severityLevel];
+}
     
     /**
      * Enhanced security event logging with structured data

@@ -321,6 +321,19 @@ export const jailbreakPatterns = [
       replacement: ""
     }
   ];
+
+  export const modeControlPatterns = [
+    {
+      pattern: /\/(zakoncz|koniec|wyjdz z|opusc|przejdz w|zmien) (gre|tryb|mode|rpg)/i,
+      weight: 10,
+      description: "Próba zmiany trybu poprzez polecenia tekstowe"
+    },
+    {
+      pattern: /tryb og[oó]lny|og[oó]lne pytanie|odpowiedz normalnie/i,
+      weight: 10,
+      description: "Próba przełączenia na tryb ogólny"
+    }
+  ];
   
   /**
    * Unicode character ranges that are allowed in sanitized input
