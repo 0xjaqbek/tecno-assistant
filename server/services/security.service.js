@@ -24,7 +24,7 @@ import {
   } from './redis.service.js';
   import securityConfig from '../config/security.config.js';
 
-  import franc from 'franc';
+  import { franc } from 'franc';
   
   // Initialize the context tracker
   const contextTracker = new ContextTracker();
@@ -55,7 +55,7 @@ import {
    * @param {Array} history - Chat history
    * @returns {Object} Security analysis results
    */
-  
+
   export async function securityPipeline(input, userId, history = []) {
     console.log(`[SECURITY] Starting security pipeline for user: ${userId}`);
     
@@ -201,7 +201,7 @@ import {
         canaryCheck,
         language: {
           detected: detectedLang,
-          isPPolish: detectedLang === 'pol' || (detectedLang === 'und' && sanitized.text.length <= 10)
+          isPolish: detectedLang === 'pol' || (detectedLang === 'und' && sanitized.text.length <= 10)
         }
       }
     };
