@@ -344,7 +344,6 @@ const SpaceThemedChatApp = () => {
         wordsPerChunk={Math.floor(Math.random() * 4) + 2} // Random 2-5 words per chunk
         typingSpeed={80} 
         onComplete={() => handleTypingComplete(messageId)}
-        isSoundOn={ambientPlaying}
       />
     );
   };
