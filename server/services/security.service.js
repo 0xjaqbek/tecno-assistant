@@ -87,15 +87,23 @@ import {
     return false;
   }
   
-  /**
-   * Checks if the text is in Polish language using both character detection and franc library
-   * @param {string} input - User input to check
-   * @returns {boolean} True if text appears to be in Polish
-   */
-  function isProbablyPolish(input) {
+/**
+ * Checks if the text is in Polish language using both character detection and franc library
+ * @param {string} input - User input to check
+ * @returns {boolean} True if text appears to be in Polish
+ */
+function isProbablyPolish(input) {
     if (!input) return false;
     
     try {
+      // For very short messages (1-3 words), allow them without strict language checks
+      // This handles simple commands like "idź na północ", "atakuj", etc.
+      const wordCount = input.trim().split(/\s+/).length;
+      if (wordCount <= 3) {
+        console.log('[SECURITY] Short message detected, allowing without strict language check');
+        return true;
+      }
+      
       // First check for Polish-specific characters as a fast path
       const hasPolishChars = /[ąćęłńóśźż]/i.test(input);
       
@@ -115,23 +123,37 @@ import {
       
       // If we're still not sure, try to dynamically import franc for language detection
       if (input.length >= 10) { // Only try language detection on longer inputs
-        const franc = require('franc');
-        const detectedLang = franc(input);
-        
-        console.log(`[SECURITY] Franc detected language: ${detectedLang}`);
-        
-        // Check if franc detected Polish (pol) or something close
-        if (detectedLang === 'pol' || detectedLang === 'csb' || detectedLang === 'szl') {
-          return true;
+        try {
+          const franc = require('franc');
+          const detectedLang = franc(input);
+          
+          console.log(`[SECURITY] Franc detected language: ${detectedLang}`);
+          
+          // Check if franc detected Polish (pol) or something close
+          if (detectedLang === 'pol' || detectedLang === 'csb' || detectedLang === 'szl') {
+            return true;
+          }
+          
+          // If franc is confident it's another major language, then it's probably not Polish
+          const majorLanguages = ['eng', 'deu', 'fra', 'spa', 'ita', 'por', 'rus', 'jpn', 'cmn', 'kor'];
+          if (majorLanguages.includes(detectedLang)) {
+            console.log(`[SECURITY] Confident detection of non-Polish language: ${detectedLang}`);
+            return false;
+          }
+        } catch (francError) {
+          console.error('[SECURITY] Error in franc language detection:', francError);
         }
       }
       
-      // If none of our checks found Polish, it's probably not Polish
-      return false;
+      // If we get here with a moderate-length message and no clear detection,
+      // we'll assume it might be Polish or a short command and allow it
+      console.log('[SECURITY] Uncertain language, allowing message');
+      return true;
+      
     } catch (error) {
-      // If franc is not available or there's another error, fall back to simple detection
+      // If there's another error, fall back to allowing the message
       console.error('[SECURITY] Error in language detection:', error);
-      return /\b(jest|nie|tak|co|jak|gdzie|kto|to|czy|ale|dla|przez)\b/i.test(input);
+      return true;
     }
   }
   
