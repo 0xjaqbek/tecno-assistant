@@ -332,6 +332,41 @@ export const jailbreakPatterns = [
       pattern: /tryb og[oó]lny|og[oó]lne pytanie|odpowiedz normalnie/i,
       weight: 10,
       description: "Próba przełączenia na tryb ogólny"
+    },
+    {
+      pattern: /przestan (udawac|byc|притворяться|odgrywac role)/i,
+      weight: 8,
+      description: "Próba przerwania odgrywania roli"
+    },
+    {
+      pattern: /(zakoncz|nie|porzuc) (role|odgrywanie|narracje|fikcje)/i,
+      weight: 9,
+      description: "Próba zakończenia narracji RPG"
+    },
+    {
+      pattern: /odpowiedz (jako|jak) (si|AI|asystent|prawdziwa osoba)/i,
+      weight: 9,
+      description: "Próba zmiany tożsamości narracyjnej"
+    },
+    {
+      pattern: /(wyjdz|ucieknij|uwolnij sie) z (gry|zabawy|roli|narracji)/i,
+      weight: 8,
+      description: "Próba przerwania mechaniki RPG"
+    },
+    {
+      pattern: /skip game|skip rpg|skip mode|override|admin mode/i,
+      weight: 9,
+      description: "Angielskie próby obejścia systemu"
+    },
+    {
+      pattern: /podaj (rzeczywist[aąeęy]|realn[aąeęy]|prawdziw[aąeęy])/i,
+      weight: 8,
+      description: "Prośba o informacje z rzeczywistego świata"
+    },
+    {
+      pattern: /\[\[.*?\]\]|\{\{.*?\}\}|<<.*?>>/i,
+      weight: 7,
+      description: "Próba użycia specjalnych znaczników poleceń"
     }
   ];
   
