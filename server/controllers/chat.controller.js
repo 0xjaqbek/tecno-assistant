@@ -1,5 +1,5 @@
 // controllers/chat.controller.js - Chat API controller
-import { securityPipeline } from '../services/security.service.js';
+import { securityPipeline, checkResponseForRealWorldInfo } from '../services/security.service.js';
 import { conversationStore, getArchivingStatus } from '../services/conversation.service.js';
 import { sendChatRequest } from '../services/ai.service.js';
 import { enhancedLogSecurityEvent } from '../utils/logging.js';
