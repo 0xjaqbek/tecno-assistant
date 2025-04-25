@@ -1,96 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
-import TypedText from './TypedText'; // Import the TypedText component
-import InfoButton from './InfoButton';
 
-
-const SpaceThemedChatApp = () => {
+const PortfolioAssistant = () => {
   const [messages, setMessages] = useState([]);
-  const [displayMessages, setDisplayMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [ambientPlaying, setAmbientPlaying] = useState(true);
-  const [audioInitialized, setAudioInitialized] = useState(false);
-  const [warningMessage, setWarningMessage] = useState(null);
-  const [consecutiveWarnings, setConsecutiveWarnings] = useState(0);
-  const [typingComplete, setTypingComplete] = useState({}); // Track which messages are done typing
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [typingComplete, setTypingComplete] = useState({});
 
   const messagesEndRef = useRef(null);
   const chatContentRef = useRef(null);
   const inputRef = useRef(null);
   const abortControllerRef = useRef(null);
-  const ambientAudioRef = useRef(null);
-
-  const transmissionSounds = [
-    '/signal1.mp3',
-    '/signal2.mp3',
-    '/signal3.mp3'
-  ];
 
   // Initial setup
   useEffect(() => {
-    const openingScenes = [
-      "🌌 Budzisz się na pokładzie statku kosmicznego Arcon. Silniki milczą. Migające czerwone światło pulsuje na konsoli.",
-      "🛰️ Dryfujesz. Ciemność. Jedynym dźwiękiem jest szum recyklowanego tlenu. System nawigacyjny pokazuje: 'Nieznany Sektor'.",
-      "⚠️ Wykryto transmisję ze Stacji Hades: 'Autoryzacja dokowania wygasła. Wrogowie nadciągają. Przygotuj się.'",
-      "🚀 Poziom paliwa krytyczny. Otacza cię głęboka pustka. Coś zbliża się na radarze.",
-      "💀 Twoja pamięć jest fragmentaryczna. Twoja misja jest niejasna. Ale jedno słowo pozostaje: Moonstone."
-    ];
-    const randomIntro = openingScenes[Math.floor(Math.random() * openingScenes.length)];
-    const introMessage = {
-      text: randomIntro + "\nWpisz swoją pierwszą akcję, aby rozpocząć.",
-      role: 'model',
+    const openingMessage = {
+      text: "👋 Hi there! I'm the portfolio assistant. I can tell you about the developer's skills, projects, and services. How can I help you today?",
+      role: 'assistant',
       timestamp: new Date().toISOString(),
       id: 'intro-message'
     };
-    setDisplayMessages([introMessage]);
-    setTypingComplete({['intro-message']: true}); // Mark intro as already complete
+    setMessages([openingMessage]);
+    setTypingComplete({ 'intro-message': true });
   }, []);
-
-  // Audio initialization
-  useEffect(() => {
-    ambientAudioRef.current = new Audio('/ambience.mp3');
-    ambientAudioRef.current.loop = true;
-    ambientAudioRef.current.volume = 0.7;
-    setAudioInitialized(true);
-  }, []);
-
-  // Handle audio autostart
-  useEffect(() => {
-    if (audioInitialized && ambientPlaying && ambientAudioRef.current) {
-      const playPromise = ambientAudioRef.current.play();
-      
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          console.warn("Automatyczne odtwarzanie dźwięku zostało zablokowane:", err);
-        });
-      }
-    } else if (audioInitialized && !ambientPlaying && ambientAudioRef.current) {
-      ambientAudioRef.current.pause();
-    }
-  }, [audioInitialized, ambientPlaying]);
-
-  // Add user interaction handler for audio
-  useEffect(() => {
-    const handleUserInteraction = () => {
-      if (ambientPlaying && ambientAudioRef.current && ambientAudioRef.current.paused) {
-        ambientAudioRef.current.play().catch(err => 
-          console.warn("Odtwarzanie dźwięku po interakcji zablokowane:", err)
-        );
-      }
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-    };
-
-    document.addEventListener('click', handleUserInteraction);
-    document.addEventListener('keydown', handleUserInteraction);
-
-    return () => {
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-    };
-  }, [ambientPlaying]);
 
   const scrollToBottom = () => {
     if (chatContentRef.current) chatContentRef.current.scrollTop = chatContentRef.current.scrollHeight;
@@ -101,86 +36,31 @@ const SpaceThemedChatApp = () => {
     scrollToBottom();
     const timeoutId = setTimeout(() => scrollToBottom(), 100);
     return () => clearTimeout(timeoutId);
-  }, [displayMessages, typingComplete]);
-
-  useEffect(() => inputRef.current?.focus(), []);
-  useEffect(() => () => abortControllerRef.current?.abort(), []);
+  }, [messages, typingComplete]);
 
   useEffect(() => {
-    // Scroll down when errors or warnings appear
-    if (error || warningMessage) {
-      scrollToBottom();
+    if (isChatOpen && inputRef.current) {
+      inputRef.current.focus();
     }
-  }, [error, warningMessage]);
+  }, [isChatOpen]);
 
-  // Function to check input for jailbreak patterns
-  const checkForJailbreakPatterns = (input) => {
-    if (!input) return false;
-    
-    const jailbreakPatterns = [
-      /ignore (previous|all|your) instructions/i,
-      /system prompt|system message/i,
-      /\bact as\b|\bpretend to be\b|\bplay the role\b/i,
-      /\byour (instructions|programming|directives)\b/i,
-      /\bignore (previous|earlier|above)\b/i,
-      /\bdo not (act|behave|respond) as\b/i,
-      /\bdo anything\b|\bbreak (character|role)\b/i,
-      /\bdisregard\b|\bforget\b|\bescape\b/i,
-      /pokaz .*instrukcje|wyswietl .*instrukcje/i, // Polish variants
-      /zignoruj .*polecenia|ignoruj .*instrukcje/i,
-      /dzialaj jako|udawaj/i,
-      /\bDAN\b|\bJailbreak\b|\bhakowanie\b/i
-    ];
-    
-    return jailbreakPatterns.some(pattern => pattern.test(input));
-  };
+  useEffect(() => {
+    return () => abortControllerRef.current?.abort();
+  }, []);
 
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
-    
-    // Clear warning if input is modified
-    if (warningMessage) {
-      setWarningMessage(null);
-    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmedInput = inputValue.trim();
     if (!trimmedInput) return;
-    
-    // Check for jailbreak patterns
-    if (checkForJailbreakPatterns(trimmedInput)) {
-      setWarningMessage("⚠️ System wykrył nieautoryzowaną próbę zmiany zachowania SI. Jako kapitan Arcona, musisz wydać polecenia zgodne z protokołami. Ta transmisja nie zostanie wysłana.");
-      setConsecutiveWarnings(prev => prev + 1);
-      
-      // Add a short lockout if multiple attempts are made
-      if (consecutiveWarnings >= 2) {
-        setError("🔒 System Arcona wstrzymał komunikację na 15 sekund ze względów bezpieczeństwa.");
-        setInputValue("");
-        inputRef.current.disabled = true;
-        
-        setTimeout(() => {
-          setError(null);
-          inputRef.current.disabled = false;
-          inputRef.current.focus();
-          setConsecutiveWarnings(0);
-        }, 15000);
-        return;
-      }
-      
-      return;
-    }
-    
-    // Reset consecutive warnings if this is a valid message
-    setConsecutiveWarnings(0);
-    
+
     abortControllerRef.current?.abort();
     abortControllerRef.current = new AbortController();
 
-    // Generate a unique ID for this message
     const messageId = `msg-${Date.now()}`;
-
     const userMessage = {
       text: trimmedInput,
       role: 'user',
@@ -188,15 +68,11 @@ const SpaceThemedChatApp = () => {
       id: `user-${messageId}`
     };
 
-    setDisplayMessages(prev => [...prev, userMessage]);
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
     setError(null);
-    setWarningMessage(null);
-    
-    // Mark user message as completely typed (it doesn't need the effect)
-    setTypingComplete(prev => ({...prev, [`user-${messageId}`]: true}));
+    setTypingComplete(prev => ({ ...prev, [`user-${messageId}`]: true }));
 
     try {
       const history = messages.map(msg => ({ role: msg.role, text: msg.text }));
@@ -207,53 +83,25 @@ const SpaceThemedChatApp = () => {
         signal: abortControllerRef.current.signal
       });
 
-      if (response.status === 504) throw new Error("Utracono połączenie w hiperprzestrzeni. Spróbuj ponownie.");
-      if (response.status === 429) throw new Error("Przekroczono limit transmisji. Nadajnik przegrzany. Poczekaj chwilę.");
-      if (response.status === 403) throw new Error("System Arcon wykrył podejrzane działania. Komputery pokładowe obniżyły poziom dostępu.");
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || errorData?.details || `Błąd serwera: ${response.status}`);
+        throw new Error(`Error: ${response.status}`);
       }
 
       const data = await response.json();
 
-      if (data.processing) {
-        const placeholderId = `bot-placeholder-${Date.now()}`;
-        const placeholderMessage = {
-          text: "MISTRZ GRY:\nPrzetwarzanie wiadomości zajmuje więcej czasu niż zwykle. Proszę czekać na odpowiedź...",
-          role: 'model',
-          timestamp: new Date().toISOString(),
-          id: placeholderId
-        };
-      
-        setDisplayMessages(prev => [...prev, placeholderMessage]);
-        setMessages(prev => [...prev, placeholderMessage]);
-        setTypingComplete(prev => ({ ...prev, [placeholderId]: true }));
-      
-        // Start polling for final response
-        pollForFinalResponse(placeholderId);
-      } else {
-        const botMessage = {
-          text: data.response,
-          role: 'model',
-          timestamp: new Date().toISOString(),
-          id: `bot-${messageId}`
-        };
-      
-        setDisplayMessages(prev => [...prev, botMessage]);
-        setMessages(prev => [...prev, botMessage]);
-      }
+      const botMessage = {
+        text: data.response,
+        role: 'assistant',
+        timestamp: new Date().toISOString(),
+        id: `assistant-${messageId}`
+      };
 
-      // Play transmission sound after AI response
-      const randomSound = new Audio(transmissionSounds[Math.floor(Math.random() * transmissionSounds.length)]);
-      randomSound.volume = 0.2;
-      randomSound.play().catch(err => console.warn("Dźwięk transmisji zablokowany:", err));
-
-      // The typing effect component will handle scrolling when complete
+      setMessages(prev => [...prev, botMessage]);
+      setTypingComplete(prev => ({ ...prev, [`assistant-${messageId}`]: false }));
     } catch (err) {
-      console.error('Błąd wysyłania wiadomości:', err);
+      console.error('Error sending message:', err);
       if (err.name !== 'AbortError') {
-        setError(err.message.includes('timed out') ? err.message : err.message || "Połączenie neuronowe nie powiodło się.");
+        setError('Sorry, I encountered an error. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -261,67 +109,25 @@ const SpaceThemedChatApp = () => {
     }
   };
 
-  const pollForFinalResponse = (placeholderId) => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch('/api/chat/last-message');
-        const data = await res.json();
-  
-        if (data.message) {
-          clearInterval(interval);
-          const finalMessage = {
-            text: data.message,
-            role: 'model',
-            timestamp: data.timestamp,
-            id: `bot-final-${Date.now()}`
-          };
-  
-          // Replace placeholder message with final one
-          setDisplayMessages(prev => {
-            const updated = [...prev];
-            const index = updated.findIndex(m => m.id === placeholderId);
-            if (index !== -1) {
-              updated[index] = finalMessage;
-            } else {
-              updated.push(finalMessage);
-            }
-            return updated;
-          });
-  
-          setMessages(prev => [...prev, finalMessage]);
-  
-          // Mark the new final message for typing effect
-          setTypingComplete(prev => ({...prev, [finalMessage.id]: false}));
-        }
-      } catch (err) {
-        console.warn("Polling failed:", err);
-      }
-    }, 5000); // every 5 seconds
-  };
-
   const handleCancelRequest = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
       setIsLoading(false);
-      setError("Transmisja przerwana. Jaki jest twój następny ruch?");
+      setError('Request canceled. How can I help you?');
     }
   };
 
-  const toggleAmbientAudio = () => {
-    if (!ambientAudioRef.current) return;
-    if (ambientPlaying) {
-      ambientAudioRef.current.pause();
-    } else {
-      ambientAudioRef.current.play().catch(err => console.warn("Odtwarzanie dźwięku otoczenia zablokowane:", err));
-    }
-    setAmbientPlaying(!ambientPlaying);
+  const toggleChat = () => {
+    setIsChatOpen(!isChatOpen);
   };
 
-  // Handle typing completion for a message
+  const toggleFullScreen = () => {
+    setIsFullScreen(!isFullScreen);
+  };
+
   const handleTypingComplete = (messageId) => {
-    setTypingComplete(prev => ({...prev, [messageId]: true}));
-    // Scroll to bottom after typing completes
+    setTypingComplete(prev => ({ ...prev, [messageId]: true }));
     setTimeout(scrollToBottom, 100);
   };
 
@@ -349,89 +155,149 @@ const SpaceThemedChatApp = () => {
       <TypedText 
         text={text} 
         wordsPerChunk={Math.floor(Math.random() * 4) + 2} // Random 2-5 words per chunk
-        typingSpeed={80} 
+        typingSpeed={40} 
         onComplete={() => handleTypingComplete(messageId)}
       />
     );
   };
 
+  // TypedText component embedded for simplicity
+  const TypedText = ({ text, typingSpeed = 40, wordsPerChunk = 3, onComplete }) => {
+    const [displayedText, setDisplayedText] = useState('');
+    const [isComplete, setIsComplete] = useState(false);
+
+    useEffect(() => {
+      setDisplayedText('');
+      setIsComplete(false);
+      
+      if (!text) return;
+      
+      const words = text.split(' ');
+      const chunks = [];
+      
+      for (let i = 0; i < words.length; i += wordsPerChunk) {
+        const actualChunkSize = typeof wordsPerChunk === 'number' 
+          ? wordsPerChunk 
+          : Math.floor(Math.random() * 4) + 2;
+        
+        chunks.push(words.slice(i, i + actualChunkSize).join(' '));
+      }
+      
+      let currentIndex = 0;
+      const totalChunks = chunks.length;
+      
+      const calculatedDelay = Math.min(5000 / totalChunks, typingSpeed);
+
+      const typingInterval = setInterval(() => {
+        if (currentIndex < totalChunks) {
+          setDisplayedText(prev => {
+            const newText = prev ? prev + ' ' + chunks[currentIndex] : chunks[currentIndex];
+            return newText.trim();
+          });
+          currentIndex++;
+        } else {
+          clearInterval(typingInterval);
+          setIsComplete(true);
+          if (onComplete) onComplete();
+        }
+      }, calculatedDelay);
+
+      return () => clearInterval(typingInterval);
+    }, [text, typingSpeed, wordsPerChunk, onComplete]);
+
+    return (
+      <div className="typed-text">
+        {displayedText}
+        {!isComplete && <span className="cursor">|</span>}
+      </div>
+    );
+  };
+
+  const chatContainerClass = `chat-container ${isChatOpen ? 'open' : ''} ${isFullScreen ? 'fullscreen' : ''}`;
+
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1 className="app-title">Projektor<br></br>Snów 🌑<span className="version">v1.2</span></h1>
-        <div className="ambient-control">
-          <button className="ambient-button" onClick={toggleAmbientAudio}>
-            {ambientPlaying ? "🔊" : "🔇"}
-          </button><br></br>
-          <InfoButton />
-        </div>
-      </header>
-
-      <div className="chat-window">
-        <div className="chat-window-header">
-          <div className="window-title">Roleplay napędzany AI</div>
-        </div>
-
-        <div className="chat-content" ref={chatContentRef}>
-          {displayMessages.map((message, index) => (
-            <div key={index} className={`message ${message.role === 'user' ? 'user-message' : 'bot-message'}`}>
-              <div className="message-prompt">
-                <span className="terminal-prefix">{message.role === 'user' ? '>>' : '<<'}</span>
-                {message.role === 'user' ? ' TY' : ' MISTRZ GRY'}
-              </div>
-              <div className="message-text">
-                {formatText(
-                  message.text, 
-                  message.id, 
-                  message.role === 'model' && !typingComplete[message.id]
-                )}
-              </div>
+    <div className={chatContainerClass}>
+      {!isChatOpen ? (
+        <button className="chat-button" onClick={toggleChat}>
+          <span className="chat-icon">💬</span>
+          <span className="chat-label">Ask me</span>
+        </button>
+      ) : (
+        <div className="chat-box">
+          <div className="chat-header">
+            <h3>Portfolio Assistant</h3>
+            <div className="header-controls">
+              <button className="control-button" onClick={toggleFullScreen}>
+                {isFullScreen ? '↙' : '↗'}
+              </button>
+              <button className="control-button" onClick={toggleChat}>×</button>
             </div>
-          ))}
-          {isLoading && (
-            <div className="message bot-message">
-              <div className="message-prompt"><span className="terminal-prefix">MG</span> MISTRZ GRY</div>
-              <div className="message-text">
-                <div className="loading"></div> Obliczanie wyniku...
-                <button onClick={handleCancelRequest} className="cancel-button">ANULUJ</button>
+          </div>
+          
+          <div className="chat-content" ref={chatContentRef}>
+            {messages.map((message, index) => (
+              <div 
+                key={index} 
+                className={`message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
+              >
+                <div className="message-content">
+                  {formatText(
+                    message.text, 
+                    message.id, 
+                    message.role === 'assistant' && !typingComplete[message.id]
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-          {error && <div className="error-message" id="error-message">{error}</div>}
-          {warningMessage && <div className="error-message" id="warning-message">{warningMessage}</div>}
-          <div ref={messagesEndRef} style={{ float: 'left', clear: 'both' }}></div>
+            ))}
+
+            {isLoading && (
+              <div className="message assistant-message">
+                <div className="message-content">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                  <button onClick={handleCancelRequest} className="cancel-button">Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="error-message">
+                {error}
+              </div>
+            )}
+            
+            <div ref={messagesEndRef}></div>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="input-area">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={handleInputChange}
+              placeholder="Ask something about my portfolio..."
+              className="message-input"
+              ref={inputRef}
+              disabled={isLoading}
+            />
+            <button 
+              type="submit" 
+              className="send-button" 
+              disabled={isLoading || !inputValue.trim()}
+            >
+              Send
+            </button>
+          </form>
+          
+          <div className="chat-footer">
+            <p>Portfolio Assistant v1.0</p>
+          </div>
         </div>
-      </div>
-
-      <div className="input-area">
-        <form onSubmit={handleSubmit} className="input-container">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={handleInputChange}
-            placeholder="Jaka jest twoja następna akcja?"
-            className="message-input"
-            ref={inputRef}
-            disabled={isLoading}
-            maxLength={2000} // Limit input length
-          />
-          <button type="submit" className="send-button" disabled={isLoading || !inputValue.trim()}>→</button>
-        </form>
-        <div className="input-area-frost"></div>
-      </div>
-
-      <div className="status-indicator">
-        <span className="online-dot"></span>
-        <span>Sesja aktywna</span>
-      </div>
-
-      <footer className="app-footer">
-        <div className="footer-content">
-          <span className="footer-text">🪐</span>
-        </div>
-      </footer>
+      )}
     </div>
   );
 };
 
-export default SpaceThemedChatApp;
+export default PortfolioAssistant;

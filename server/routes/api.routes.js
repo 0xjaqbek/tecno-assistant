@@ -1,6 +1,7 @@
 // routes/api.routes.js - API routes
 import express from 'express';
 import { processChat } from '../controllers/chat.controller.js';
+import { processPortfolioChat } from '../controllers/portfolio-chat.controller.js';
 import { detectUnauthorizedAdminTricks } from '../middleware/security.middleware.js';
 import { getLastMessage } from '../controllers/chat.controller.js';
 
@@ -12,8 +13,11 @@ router.get('/simple-test', (req, res) => {
   return res.json({ success: true, message: 'API is working properly' });
 });
 
-// Chat endpoint with security filter
+// Original RPG chat endpoint
 router.post('/chat', detectUnauthorizedAdminTricks, processChat);
 router.get('/chat/last-message', getLastMessage);
+
+// New portfolio assistant endpoint
+router.post('/portfolio-chat', detectUnauthorizedAdminTricks, processPortfolioChat);
 
 export default router;
