@@ -28,8 +28,23 @@ app.use(session({
   cookie: { secure: process.env.NODE_ENV === 'production' }
 }));
 
+// Configure CORS to allow requests from your GitHub Pages domain
+const corsOptions = {
+  origin: [
+    'https://0xjaqbek.github.io',   // Main GitHub Pages domain
+    'http://localhost:3000',        // Local development
+    'http://localhost:5173'         // Vite development server
+  ],
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// Apply CORS middleware with options
+app.use(cors(corsOptions));
+
+
 // Middleware setup
-app.use(cors());
+
 app.use(express.json({ limit: '1mb' })); // Limit payload size
 
 // Apply security middleware to API routes
