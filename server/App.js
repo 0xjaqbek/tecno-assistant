@@ -29,15 +29,20 @@ app.use(session({
 }));
 
 // Configure CORS to allow requests from your GitHub Pages domain
-const corsOptions = {
-  origin: [
-    'https://0xjaqbek.github.io',   // Main GitHub Pages domain
-    'http://localhost:3000',        // Local development
-    'http://localhost:5173'         // Vite development server
-  ],
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
+  const corsOptions = {
+    origin: [
+      'https://0xjaqbek.github.io',
+      'https://0xjaqbek.github.io/tecnosoluciones/',
+      'https://0xjaqbek.github.io/tecnosoluciones',
+      'https://7b868258933b.ngrok-free.app',   // Update to your current ngrok URL
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://localhost:4173'
+    ],
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'], // Add this header
+    credentials: true
+  };
 
 // Apply CORS middleware with options
 app.use(cors(corsOptions));

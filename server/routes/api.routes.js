@@ -2,6 +2,7 @@
 import express from 'express';
 import { processChat } from '../controllers/chat.controller.js';
 import { processPortfolioChat } from '../controllers/portfolio-chat.controller.js';
+import { processTecnosolucionesChat } from '../controllers/tecnosoluciones-chat.controller.js'; // Add this import
 import { detectUnauthorizedAdminTricks } from '../middleware/security.middleware.js';
 import { getLastMessage } from '../controllers/chat.controller.js';
 
@@ -17,7 +18,10 @@ router.get('/simple-test', (req, res) => {
 router.post('/chat', detectUnauthorizedAdminTricks, processChat);
 router.get('/chat/last-message', getLastMessage);
 
-// New portfolio assistant endpoint
+// Portfolio assistant endpoint
 router.post('/portfolio-chat', detectUnauthorizedAdminTricks, processPortfolioChat);
+
+// TecnoSoluciones assistant endpoint
+router.post('/tecnosoluciones-chat', detectUnauthorizedAdminTricks, processTecnosolucionesChat);
 
 export default router;
