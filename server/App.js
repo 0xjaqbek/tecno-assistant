@@ -34,7 +34,8 @@ app.use(session({
       'https://0xjaqbek.github.io',
       'https://0xjaqbek.github.io/tecnosoluciones/',
       'https://0xjaqbek.github.io/tecnosoluciones',
-      'https://7b868258933b.ngrok-free.app',   // Update to your current ngrok URL
+      'https://7b868258933b.ngrok-free.app',
+      'https://gc-indiana-seafood-markers.trycloudflare.com',
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:4173'
