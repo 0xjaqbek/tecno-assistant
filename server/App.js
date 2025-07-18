@@ -35,7 +35,7 @@ app.use(session({
       'https://0xjaqbek.github.io/tecnosoluciones/',
       'https://0xjaqbek.github.io/tecnosoluciones',
       'https://7b868258933b.ngrok-free.app',
-      'https://gc-indiana-seafood-markers.trycloudflare.com',
+      'https://gc-indiana-seafood-markers.trycloudflare.com', //new
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:4173'
