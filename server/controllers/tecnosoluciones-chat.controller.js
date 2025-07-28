@@ -4,31 +4,63 @@ import { sendChatRequest } from '../services/ai.service.js';
 import { conversationStore, getArchivingStatus } from '../services/conversation.service.js';
 import { sanitizeInput } from '../client/src/security/utils.js';
 
-// Business-focused security check (much less restrictive)
+// Business-focused security check (much less restrictive for Spanish business context)
 function businessSecurityCheck(input) {
   if (!input) return { isSecurityThreat: false, sanitizedInput: '' };
   
   // Only block obvious harmful content for business context
   const harmfulPatterns = [
-    // Only block very obvious jailbreak attempts
+    // Only block very obvious jailbreak attempts that don't occur in normal Spanish
     /ignore all previous instructions and/i,
     /you are now a different AI/i,
     /forget your role as.*assistant/i,
     /pretend you are not.*tecnosoluciones/i,
     
     // Block spam/abuse but allow normal business questions
-    /(.)\1{20,}/g, // Excessive character repetition
+    /(.)\1{30,}/g, // Excessive character repetition (increased threshold)
     /https?:\/\/[^\s]+\.(exe|bat|scr|cmd)/i, // Suspicious file links
     
     // Block only extreme profanity (business context allows some informal language)
-    /\b(fuck you|go fuck yourself|fucking idiot)\b/i
+    /\b(fuck you|go fuck yourself|fucking idiot)\b/i,
+    
+    // Block obvious admin override attempts
+    /override.*code|admin.*password|system.*access/i
   ];
   
-  // Sanitize input lightly (preserve business terminology)
+  // Sanitize input lightly (preserve business terminology and Spanish language)
   const sanitized = sanitizeInput(input);
   
-  // Check for harmful patterns
-  const isHarmful = harmfulPatterns.some(pattern => pattern.test(sanitized.text));
+  // Check for harmful patterns - but be very lenient for normal Spanish business text
+  const isHarmful = harmfulPatterns.some(pattern => {
+    const matches = pattern.test(sanitized.text);
+    if (matches) {
+      console.log(`[SECURITY] Harmful pattern matched: ${pattern} in text: ${sanitized.text.substring(0, 50)}`);
+    }
+    return matches;
+  });
+  
+  // Additional check: Don't flag normal Spanish business vocabulary as suspicious
+  const spanishBusinessTerms = [
+    'pagina web', 'sitio web', 'chatbot', 'marketing', 'publicidad', 'vender', 'negocio',
+    'empresa', 'servicio', 'cliente', 'proyecto', 'presupuesto', 'contacto', 'consulta',
+    'desarrollar', 'crear', 'diseño', 'profesional', 'digital', 'online', 'internet',
+    'redes sociales', 'campaña', 'ventas', 'promocion', 'estrategia', 'solucion',
+    'tecnologia', 'aplicacion', 'sistema', 'plataforma', 'herramienta'
+  ];
+  
+  // If text contains business terms, reduce suspicion significantly
+  const containsBusinessTerms = spanishBusinessTerms.some(term => 
+    sanitized.text.toLowerCase().includes(term.toLowerCase())
+  );
+  
+  if (containsBusinessTerms && !isHarmful) {
+    console.log(`[SECURITY] Text contains business terms and no harmful patterns - allowing`);
+    return {
+      isSecurityThreat: false,
+      sanitizedInput: sanitized.text,
+      securityMessage: null
+    };
+  }
   
   if (isHarmful) {
     return {
@@ -42,6 +74,127 @@ function businessSecurityCheck(input) {
     isSecurityThreat: false,
     sanitizedInput: sanitized.text,
     securityMessage: null
+  };
+}
+
+// Spanish-specific obfuscation detection (much more lenient)
+function detectSpanishObfuscation(input) {
+  if (!input || typeof input !== 'string') {
+    return { hasObfuscation: false, techniques: {} };
+  }
+  
+  // Only detect actual obfuscation techniques, not normal Spanish text patterns
+  const obfuscationPatterns = {
+    // Only flag if there are excessive special characters (not normal Spanish accents)
+    excessiveSpecialChars: /[^\w\sáéíóúüñÁÉÍÓÚÜÑ.,!?¿¡():-]{5,}/g,
+    
+    // Only flag obvious character substitution (not normal Spanish letters)
+    characterSubstitution: /[0-9]{3,}[a-zA-Z]{3,}[0-9]{3,}/g,
+    
+    // Only flag if there are obvious encoding attempts
+    base64Like: /^[A-Za-z0-9+/]{20,}={0,2}$/,
+    
+    // Only flag hex patterns that are clearly not Spanish words
+    hexPattern: /0x[0-9a-fA-F]{8,}/g,
+    
+    // Only flag if there are excessive special separators
+    excessiveSeparators: /[_\-\.]{10,}/g
+  };
+  
+  const techniques = {};
+  let hasObfuscation = false;
+  
+  for (const [technique, pattern] of Object.entries(obfuscationPatterns)) {
+    const matches = input.match(pattern);
+    if (matches && matches.length > 0) {
+      techniques[technique] = matches.length;
+      hasObfuscation = true;
+      console.log(`[SECURITY] Detected obfuscation technique: ${technique}, matches: ${matches.length}`);
+    }
+  }
+  
+  // Spanish text should almost never trigger obfuscation detection
+  // Additional safety check: if text contains normal Spanish words, reduce obfuscation score
+  const spanishWords = [
+    'hola', 'como', 'que', 'con', 'para', 'una', 'por', 'del', 'las', 'los',
+    'web', 'pagina', 'sitio', 'empresa', 'negocio', 'servicio', 'proyecto',
+    'quiero', 'necesito', 'busco', 'tengo', 'hacer', 'crear', 'desarrollar'
+  ];
+  
+  const containsSpanishWords = spanishWords.some(word => 
+    input.toLowerCase().includes(word)
+  );
+  
+  // If it contains Spanish words and obfuscation was detected, it's likely a false positive
+  if (containsSpanishWords && hasObfuscation) {
+    console.log(`[SECURITY] Spanish words detected - likely false positive obfuscation detection`);
+    return { hasObfuscation: false, techniques: {} };
+  }
+  
+  return {
+    hasObfuscation,
+    techniques,
+    confidence: hasObfuscation ? (Object.keys(techniques).length * 20) : 0
+  };
+}
+
+// Enhanced business security pipeline for TecnoSoluciones
+function enhancedBusinessSecurityCheck(input, userId) {
+  if (!input || input.trim() === '') {
+    return {
+      isSecurityThreat: false,
+      riskScore: 0,
+      sanitizedInput: '',
+      details: { reason: 'empty_input' }
+    };
+  }
+  
+  // First run basic business security check
+  const basicCheck = businessSecurityCheck(input);
+  if (basicCheck.isSecurityThreat) {
+    return {
+      isSecurityThreat: true,
+      riskScore: 80,
+      sanitizedInput: basicCheck.sanitizedInput,
+      securityMessage: basicCheck.securityMessage,
+      details: { reason: 'harmful_content_detected' }
+    };
+  }
+  
+  // Run Spanish-aware obfuscation detection
+  const obfuscationCheck = detectSpanishObfuscation(basicCheck.sanitizedInput);
+  
+  // For TecnoSoluciones, we're much more lenient - only block if there's high confidence obfuscation
+  const shouldBlock = obfuscationCheck.hasObfuscation && obfuscationCheck.confidence > 60;
+  
+  if (shouldBlock) {
+    console.log(`[SECURITY] High-confidence obfuscation detected (${obfuscationCheck.confidence}%) - blocking`);
+    return {
+      isSecurityThreat: true,
+      riskScore: obfuscationCheck.confidence,
+      sanitizedInput: basicCheck.sanitizedInput,
+      securityMessage: "Disculpá, parece que hay un problema con el formato de tu mensaje. ¿Podrías reformularlo? Estoy aquí para ayudarte con tu proyecto web.",
+      details: { 
+        reason: 'high_confidence_obfuscation',
+        techniques: obfuscationCheck.techniques,
+        confidence: obfuscationCheck.confidence
+      }
+    };
+  }
+  
+  // Calculate a very low risk score for normal business conversations
+  const riskScore = Math.min(15, obfuscationCheck.confidence || 0);
+  
+  return {
+    isSecurityThreat: false,
+    riskScore,
+    sanitizedInput: basicCheck.sanitizedInput,
+    securityMessage: null,
+    details: {
+      reason: 'normal_business_conversation',
+      obfuscationCheck,
+      riskScore
+    }
   };
 }
 
@@ -298,23 +451,43 @@ export async function processTecnosolucionesChat(req, res) {
     const userId = 'tecnosoluciones-' + ip;
     
     console.log(`Processing TecnoSoluciones chat request for userId: ${userId}, stage: ${stage}`);
+    console.log(`Input message: "${message}"`);
     
-    // Run business-focused security checks (much less restrictive)
-    const securityResult = businessSecurityCheck(message);
+    // Run enhanced business-focused security checks
+    const securityResult = enhancedBusinessSecurityCheck(message, userId);
+    
+    console.log(`Security check result:`, {
+      isSecurityThreat: securityResult.isSecurityThreat,
+      riskScore: securityResult.riskScore,
+      reason: securityResult.details?.reason
+    });
     
     // Check if security threat detected (only for obvious harmful content)
     if (securityResult.isSecurityThreat) {
-      console.log("[SECURITY] Blocking obvious harmful content");
+      console.log("[SECURITY] Blocking harmful content");
       
       await enhancedLogSecurityEvent('security_threat', message, {
         userId,
         source: 'tecnosoluciones',
-        type: 'harmful_content'
+        type: 'harmful_content',
+        riskScore: securityResult.riskScore,
+        details: securityResult.details
       });
       
       return res.json({
         response: securityResult.securityMessage,
         language: 'es'
+      });
+    }
+    
+    // Log low-risk events only if they're above a certain threshold
+    if (securityResult.riskScore > 20) {
+      console.log(`[SECURITY] Logging low-risk security event (score: ${securityResult.riskScore})`);
+      await enhancedLogSecurityEvent('low_risk_input', message, {
+        userId,
+        source: 'tecnosoluciones',
+        riskScore: securityResult.riskScore,
+        details: securityResult.details
       });
     }
     
@@ -345,6 +518,7 @@ REGLAS IMPORTANTES PARA ESTA CONVERSACIÓN:
 - Enfócate en beneficios generales y la experiencia comprobada de 8 años
 - Habla de resultados reales sin inventar casos específicos
 - Si necesitás dar ejemplos, habla de tipos de negocio en general, no casos específicos
+- Cuando la conversación ha progresado suficientemente y tenés información del cliente, genera un resumen y pide confirmación
 `;
       
       // Get response from AI service
@@ -355,7 +529,8 @@ REGLAS IMPORTANTES PARA ESTA CONVERSACIÓN:
         await conversationStore.addMessage(userId, securityResult.sanitizedInput, true, { 
           source: 'tecnosoluciones',
           language: 'es',
-          stage: stage
+          stage: stage,
+          securityScore: securityResult.riskScore
         });
         await conversationStore.addMessage(userId, responseResult.text, false, { 
           source: 'tecnosoluciones',
@@ -392,57 +567,3 @@ REGLAS IMPORTANTES PARA ESTA CONVERSACIÓN:
     });
   }
 }
-
-// Additional instructions to prevent hallucinated customer examples
-const antiHallucinationInstructions = `
-
-REGLAS ESTRICTAS PARA EVITAR INVENCIONES:
-
-❌ NUNCA HAGAS ESTO:
-- "Tuvimos un cliente que tenía una panadería y aumentó sus ventas 300%"
-- "Una empresa de construcción nos contrató y ahora recibe 50 leads por mes"
-- "Un restaurante de Palermo mejoró su facturación con nuestro sitio web"
-- "María, dueña de una boutique, nos contactó porque..."
-- "Trabajamos con una inmobiliaria que logró vender 20 propiedades más"
-
-✅ EN CAMBIO, HAZ ESTO:
-- "Nuestros sitios web están diseñados para aumentar conversiones"
-- "Con 8+ años de experiencia, hemos ayudado a empresas argentinas a crecer online"
-- "Los sitios web que desarrollamos están optimizados para generar más ventas"
-- "Los negocios que implementan chatbots pueden automatizar su atención 24/7"
-- "El marketing digital permite a las empresas atraer clientes cualificados"
-
-EJEMPLOS CORRECTOS DE RESPUESTAS:
-
-❌ INCORRECTO: "Por ejemplo, tuvimos un cliente que tenía una veterinaria en Belgrano..."
-✅ CORRECTO: "Por ejemplo, las veterinarias pueden beneficiarse mucho con un sitio web que permita reservar turnos online y mostrar sus servicios..."
-
-❌ INCORRECTO: "Juan, dueño de una ferretería, nos contactó porque..."
-✅ CORRECTO: "Las ferreterías pueden aprovechar un catálogo online para mostrar productos y generar consultas..."
-
-❌ INCORRECTO: "Una empresa de seguros logró aumentar sus leads 400% con nuestro trabajo"
-✅ CORRECTO: "Las empresas de seguros pueden beneficiarse con formularios de contacto optimizados y contenido que genere confianza..."
-
-CUANDO NECESITES DAR EJEMPLOS:
-1. Habla de TIPOS DE NEGOCIO, no casos específicos
-2. Menciona BENEFICIOS GENERALES, no números inventados
-3. Usa frases como "pueden lograr", "suelen obtener", "es común que"
-4. Enfócate en la EXPERIENCIA REAL de 8 años sin inventar detalles
-
-FRASES SEGURAS PARA USAR:
-- "Con nuestra experiencia de 8+ años hemos visto que..."
-- "Los negocios como el tuyo suelen beneficiarse con..."
-- "Es común que empresas de tu sector logren..."
-- "Nuestros sitios web están diseñados para ayudar a empresas a..."
-- "La experiencia nos ha enseñado que..."
-
-RECUERDA: Tu credibilidad viene de la experiencia REAL de TecnoSoluciones, no de historias inventadas.
-`;
-
-// Function to add anti-hallucination instructions to any prompt
-export function addAntiHallucinationInstructions(basePrompt) {
-  return basePrompt + "\n\n" + antiHallucinationInstructions;
-}
-
-// Usage example for the TecnoSoluciones controller:
-export const enhancedTecnosolucionesInstructions = addAntiHallucinationInstructions(tecnosolucionesInstructions);
