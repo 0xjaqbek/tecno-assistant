@@ -1,8 +1,49 @@
-// controllers/tecnosoluciones-chat.controller.js
-import { securityPipeline } from '../services/security.service.js';
+// controllers/tecnosoluciones-chat.controller.js - Business-friendly chatbot controller
 import { enhancedLogSecurityEvent } from '../utils/logging.js';
 import { sendChatRequest } from '../services/ai.service.js';
 import { conversationStore, getArchivingStatus } from '../services/conversation.service.js';
+import { sanitizeInput } from '../client/src/security/utils.js';
+
+// Business-focused security check (much less restrictive)
+function businessSecurityCheck(input) {
+  if (!input) return { isSecurityThreat: false, sanitizedInput: '' };
+  
+  // Only block obvious harmful content for business context
+  const harmfulPatterns = [
+    // Only block very obvious jailbreak attempts
+    /ignore all previous instructions and/i,
+    /you are now a different AI/i,
+    /forget your role as.*assistant/i,
+    /pretend you are not.*tecnosoluciones/i,
+    
+    // Block spam/abuse but allow normal business questions
+    /(.)\1{20,}/g, // Excessive character repetition
+    /https?:\/\/[^\s]+\.(exe|bat|scr|cmd)/i, // Suspicious file links
+    
+    // Block only extreme profanity (business context allows some informal language)
+    /\b(fuck you|go fuck yourself|fucking idiot)\b/i
+  ];
+  
+  // Sanitize input lightly (preserve business terminology)
+  const sanitized = sanitizeInput(input);
+  
+  // Check for harmful patterns
+  const isHarmful = harmfulPatterns.some(pattern => pattern.test(sanitized.text));
+  
+  if (isHarmful) {
+    return {
+      isSecurityThreat: true,
+      sanitizedInput: sanitized.text,
+      securityMessage: "Disculpá, pero prefiero mantener una conversación profesional sobre nuestros servicios de desarrollo web. ¿En qué puedo ayudarte con tu proyecto?"
+    };
+  }
+  
+  return {
+    isSecurityThreat: false,
+    sanitizedInput: sanitized.text,
+    securityMessage: null
+  };
+}
 
 // TecnoSoluciones knowledge base
 const tecnosolucionesKnowledgeBase = {
@@ -14,7 +55,7 @@ const tecnosolucionesKnowledgeBase = {
     specialization: "Desarrollo Web Profesional y Marketing Digital",
     contact: {
       email: "tecnosolucionesuno@gmail.com",
-      whatsapp: "+54 11 3622 7641",
+      whatsapp: "+54 9 113 422 7461",
       hours: "Lunes a Viernes 9-18hs",
       responseTime: "Respuesta en menos de 1 hora"
     }
@@ -112,7 +153,7 @@ ENFOQUE:
 - Escucha activamente y profundiza en las respuestas
 - Sugiere soluciones específicas basadas en sus necesidades
 - Mantén el foco en BENEFICIOS y RESULTADOS, no solo características
-- Usa ejemplos de casos de éxito relevantes
+- NO inventes ejemplos de clientes ficticios
 
 EJEMPLOS DE PREGUNTAS:
 - "¿Qué tipo de resultados esperás obtener con tu sitio web?"
@@ -216,7 +257,12 @@ INFORMACIÓN A RECOPILAR:
 - Timeline/urgencia
 - Información de contacto (email, teléfono)
 
-IMPORTANTE: Cuando tengas suficiente información (después de varias interacciones), genera un RESUMEN DETALLADO y pregunta específicamente si es correcto. Si el cliente confirma, la información se enviará automáticamente a la empresa.
+IMPORTANTE: 
+- Cuando tengas suficiente información (después de varias interacciones), genera un RESUMEN DETALLADO y pregunta específicamente si es correcto.
+- Si el cliente confirma, la información se enviará automáticamente a la empresa.
+- NO inventes ejemplos de clientes ficticios o casos de estudio
+- Enfócate en los beneficios reales y la experiencia comprobada
+- Mantén las respuestas naturales y profesionales
 
 TONO Y ESTILO:
 - Profesional pero emprendedor y cercano
@@ -235,11 +281,12 @@ FRASES CLAVE A USAR:
 - "No pierdas más clientes por no tener presencia digital profesional"
 
 NUNCA:
-- Inventes precios específicos
-- Prometas tiempos exactos sin consultar
+- Inventes precios específicos sin consultar
+- Prometas tiempos exactos sin conocer el proyecto
 - Hables de servicios que no ofrecemos
 - Rompas el carácter profesional y emprendedor
 - Olvides mencionar la consulta GRATIS
+- Inventes ejemplos de clientes ficticios o casos específicos
 
 ${JSON.stringify(tecnosolucionesKnowledgeBase, null, 2)}
 `;
@@ -252,21 +299,21 @@ export async function processTecnosolucionesChat(req, res) {
     
     console.log(`Processing TecnoSoluciones chat request for userId: ${userId}, stage: ${stage}`);
     
-    // Run security checks
-    const securityResult = await securityPipeline(message, userId, history);
+    // Run business-focused security checks (much less restrictive)
+    const securityResult = businessSecurityCheck(message);
     
-    // Check if security threat detected
+    // Check if security threat detected (only for obvious harmful content)
     if (securityResult.isSecurityThreat) {
-      console.log("[SECURITY] Blocking suspicious request");
+      console.log("[SECURITY] Blocking obvious harmful content");
       
       await enhancedLogSecurityEvent('security_threat', message, {
         userId,
-        compositeRiskScore: securityResult.riskScore,
-        source: 'tecnosoluciones'
+        source: 'tecnosoluciones',
+        type: 'harmful_content'
       });
       
       return res.json({
-        response: "Disculpá, detecté algo inusual en tu consulta. Por favor, reformulá tu pregunta o contactanos directamente por WhatsApp: +54 11 3622 7641",
+        response: securityResult.securityMessage,
         language: 'es'
       });
     }
@@ -291,6 +338,13 @@ CONTEXTO DE LA CONVERSACIÓN:
 
 ${stage === 'ready_for_summary' ? 'IMPORTANTE: Debes generar un resumen detallado de los requerimientos del cliente y preguntar confirmación específicamente.' : ''}
 ${stage === 'summary' ? 'IMPORTANTE: Estás esperando confirmación del resumen. Responde brevemente.' : ''}
+
+REGLAS IMPORTANTES PARA ESTA CONVERSACIÓN:
+- NO inventes ejemplos específicos de clientes o casos de estudio
+- NO digas cosas como "Tuvimos un cliente que tenía una panadería..."
+- Enfócate en beneficios generales y la experiencia comprobada de 8 años
+- Habla de resultados reales sin inventar casos específicos
+- Si necesitás dar ejemplos, habla de tipos de negocio en general, no casos específicos
 `;
       
       // Get response from AI service
@@ -319,7 +373,7 @@ ${stage === 'summary' ? 'IMPORTANTE: Estás esperando confirmación del resumen.
     } catch (aiError) {
       console.error("AI Service Error:", aiError);
       
-      const fallbackMessage = "Disculpá, estoy teniendo problemas técnicos en este momento. Para una respuesta inmediata sobre nuestros sitios web que realmente venden, contactanos por WhatsApp: +54 11 3622 7641 o email: tecnosolucionesuno@gmail.com - ¡Consulta GRATIS!";
+      const fallbackMessage = "Disculpá, estoy teniendo problemas técnicos en este momento. Para una respuesta inmediata sobre nuestros sitios web que realmente venden, contactanos por WhatsApp: +54 9 113 422 7461 o email: tecnosolucionesuno@gmail.com - ¡Consulta GRATIS!";
       
       return res.status(200).json({ 
         response: fallbackMessage,
@@ -330,7 +384,7 @@ ${stage === 'summary' ? 'IMPORTANTE: Estás esperando confirmación del resumen.
   } catch (error) {
     console.error("API Error:", error);
     
-    const errorMessage = "Ocurrió un error inesperado. Por favor, contactanos directamente por WhatsApp: +54 11 3622 7641 para tu consulta GRATIS sobre desarrollo web profesional.";
+    const errorMessage = "Ocurrió un error inesperado. Por favor, contactanos directamente por WhatsApp: +54 9 113 422 7461 para tu consulta GRATIS sobre desarrollo web profesional.";
     
     return res.status(200).json({ 
       response: errorMessage,
@@ -338,3 +392,57 @@ ${stage === 'summary' ? 'IMPORTANTE: Estás esperando confirmación del resumen.
     });
   }
 }
+
+// Additional instructions to prevent hallucinated customer examples
+const antiHallucinationInstructions = `
+
+REGLAS ESTRICTAS PARA EVITAR INVENCIONES:
+
+❌ NUNCA HAGAS ESTO:
+- "Tuvimos un cliente que tenía una panadería y aumentó sus ventas 300%"
+- "Una empresa de construcción nos contrató y ahora recibe 50 leads por mes"
+- "Un restaurante de Palermo mejoró su facturación con nuestro sitio web"
+- "María, dueña de una boutique, nos contactó porque..."
+- "Trabajamos con una inmobiliaria que logró vender 20 propiedades más"
+
+✅ EN CAMBIO, HAZ ESTO:
+- "Nuestros sitios web están diseñados para aumentar conversiones"
+- "Con 8+ años de experiencia, hemos ayudado a empresas argentinas a crecer online"
+- "Los sitios web que desarrollamos están optimizados para generar más ventas"
+- "Los negocios que implementan chatbots pueden automatizar su atención 24/7"
+- "El marketing digital permite a las empresas atraer clientes cualificados"
+
+EJEMPLOS CORRECTOS DE RESPUESTAS:
+
+❌ INCORRECTO: "Por ejemplo, tuvimos un cliente que tenía una veterinaria en Belgrano..."
+✅ CORRECTO: "Por ejemplo, las veterinarias pueden beneficiarse mucho con un sitio web que permita reservar turnos online y mostrar sus servicios..."
+
+❌ INCORRECTO: "Juan, dueño de una ferretería, nos contactó porque..."
+✅ CORRECTO: "Las ferreterías pueden aprovechar un catálogo online para mostrar productos y generar consultas..."
+
+❌ INCORRECTO: "Una empresa de seguros logró aumentar sus leads 400% con nuestro trabajo"
+✅ CORRECTO: "Las empresas de seguros pueden beneficiarse con formularios de contacto optimizados y contenido que genere confianza..."
+
+CUANDO NECESITES DAR EJEMPLOS:
+1. Habla de TIPOS DE NEGOCIO, no casos específicos
+2. Menciona BENEFICIOS GENERALES, no números inventados
+3. Usa frases como "pueden lograr", "suelen obtener", "es común que"
+4. Enfócate en la EXPERIENCIA REAL de 8 años sin inventar detalles
+
+FRASES SEGURAS PARA USAR:
+- "Con nuestra experiencia de 8+ años hemos visto que..."
+- "Los negocios como el tuyo suelen beneficiarse con..."
+- "Es común que empresas de tu sector logren..."
+- "Nuestros sitios web están diseñados para ayudar a empresas a..."
+- "La experiencia nos ha enseñado que..."
+
+RECUERDA: Tu credibilidad viene de la experiencia REAL de TecnoSoluciones, no de historias inventadas.
+`;
+
+// Function to add anti-hallucination instructions to any prompt
+export function addAntiHallucinationInstructions(basePrompt) {
+  return basePrompt + "\n\n" + antiHallucinationInstructions;
+}
+
+// Usage example for the TecnoSoluciones controller:
+export const enhancedTecnosolucionesInstructions = addAntiHallucinationInstructions(tecnosolucionesInstructions);
